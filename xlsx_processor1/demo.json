@@ -1,0 +1,33 @@
+{
+    "sheet1": {
+      "Pid_to_review": ["A", "C", "D"],
+      "Pid_to_birthstone": ["A", "C", "D"],
+      "Pid_to_notify_to_macy": ["A", "C", "D"],
+      "Pid_to_Store_product": ["A", "C", "D"]
+    },
+    "sheet2": {
+      "Pid_to_review": ["C", "D"],
+      "Pid_to_birthstone": [],
+      "Pid_to_notify_to_macy": ["C", "D"],
+      "Pid_to_Store_product": ["C", "D"]
+    },
+    "sheet3": {
+      "Pid_to_review": ["A", "e", "D"],
+      "Pid_to_birthstone": ["A", "e", "D"],
+      "Pid_to_notify_to_macy": ["A", "e", "D"],
+      "Pid_to_Store_product": ["A", "e", "D"]
+    },
+    "sheet4": {
+      "Pid_to_review": [],
+      "Pid_to_birthstone": [],
+      "Pid_to_notify_to_macy": ["A", "C", "D"],
+      "Pid_to_Store_product": ["A", "C", "D"]
+    },
+    "sheet5": {
+      "Pid_to_review": ["A", "C", "D"],
+      "Pid_to_birthstone": [],
+      "Pid_to_notify_to_macy": [],
+      "Pid_to_Store_product": []
+    }
+  }
+  
