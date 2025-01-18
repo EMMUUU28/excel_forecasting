@@ -178,6 +178,14 @@ def upload_xlsx(request):
         if request.method == 'POST' and 'file' in request.FILES:
             uploaded_file = request.FILES['file']
             output_folder= request.POST['output_filename']
+            month_from = request.POST.get('month_from')
+            month_to = request.POST.get('month_to')
+            percentage = request.POST.get('percentage')
+
+            print("month_from", month_from)
+            print("month_to", month_to)
+            print("percentage", percentage)
+
 
             # Ensure the directory exists within MEDIA_ROOT
             processed_dir = os.path.join(settings.MEDIA_ROOT, 'processed_files')
@@ -276,15 +284,7 @@ def processed_data(input_path,file_path):
     All_DATA= pd.read_excel(input_path, sheet_name='All_DATA', header=0)
     MCOM_Data=pd.read_excel(input_path, sheet_name='MCOM_Data', header=0)
     categories = {
-        "Bridge Gem": ["742"],
-        "Gold": ["746", "262&270"],
-        "Womens Silver": ["260&404"],
-        "Precious": ["264&268"],
-        "Fine Pearl": ["265&271"],
-        "Semi": ["272&733"],
-        "Diamond": ["734&737&748"],
-        "Bridal": ["739&267&263"],
-        "Men's": ["768&771"]
+        "Bridal": ["739&267&263"]
     }
 
     dynamic_categories = {
