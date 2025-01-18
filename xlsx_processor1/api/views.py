@@ -1491,7 +1491,7 @@ class SheetData(APIView):
 
     #Self defined Function
     def get_data_from_json(self):
-        file_path = os.path.join(settings.BASE_DIR,'demo.json')
+        file_path = os.path.join(settings.BASE_DIR,'media','output.json')
         print(file_path)
 
         try:
