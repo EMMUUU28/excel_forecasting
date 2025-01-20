@@ -15,8 +15,9 @@ function FileUpload() {
   const [loading, setLoading] = useState(false); // Manage loading state
   const [isFileUploaded, setIsFileUploaded] = useState(false);
 
-
   useEffect(() => {
+    if(isFileUploaded){
+
     fetch("http://127.0.0.1:8000/api/sheet/")
       .then((response) => response.json())
       .then((data) => {
@@ -24,7 +25,8 @@ function FileUpload() {
         setData(data);
       })
       .catch((error) => console.error("Error fetching data from API:", error));
-  }, []);
+    }
+  }, [isFileUploaded]);
 
   const handleFileChange = (event) => {
     setFile(event.target.files[0]);
@@ -184,6 +186,7 @@ function FileUpload() {
 
 {errorMessage && <p className="error-message">{errorMessage}</p>}
 {console.log(data)}
+
 {/*  data && Displaying data from demo.json only if file is uploaded successfully */}
 {  isFileUploaded && data && (
   <div className="data-section">
