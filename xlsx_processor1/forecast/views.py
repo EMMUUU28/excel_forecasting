@@ -35,6 +35,12 @@ import zipfile
 import shutil
 import json 
 import math
+import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor
+import pandas as pd
+from datetime import datetime, timedelta
+from calendar import monthrange
+
 
 def make_zip_and_delete(folder_path):
     folder_path = os.path.normpath(folder_path)
@@ -62,11 +68,6 @@ def make_zip_and_delete(folder_path):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-
-
-
-from datetime import datetime, timedelta
-from calendar import monthrange
 
 def get_previous_retail_week():
     """
@@ -201,7 +202,11 @@ def upload_xlsx(request):
             
             try:
                 # processed_data(INPUT_EXCEL_FILE, OUTPUT_EXCEL_FILE)  # Ensure this function is defined elsewhere
-                processed_data(INPUT_EXCEL_FILE,file_path,month_from,month_to,percentage) 
+                start_time = time.time()
+                process_data(INPUT_EXCEL_FILE,file_path,month_from,month_to,percentage) 
+                end_time = time.time() 
+                elapsed_time = end_time - start_time
+                print(f"Function executed in {elapsed_time:.6f} seconds")
                 make_zip_and_delete(file_path)
             except Exception as e:
                 print(f"An error occurred during execution: {e}")
@@ -227,7 +232,6 @@ def download_file(request):
     return JsonResponse({'error': 'File not found'}, status=404)
 
 
-
 @csrf_exempt
 # Function to add a dropdown to a specific cell
 def add_dropdown(ws, cell, options):
@@ -238,7 +242,6 @@ def add_dropdown(ws, cell, options):
     # Apply the data validation dropdown to the specified cell
     ws.add_data_validation(dropdown)
     dropdown.add(ws[cell])
-
 
 
 def apply_round_format(ws, cell_ranges, decimal_places):
@@ -260,7 +263,6 @@ def apply_round_format(ws, cell_ranges, decimal_places):
                 cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
 
 
-
 def apply_format(ws, cell_ranges, number_format):
     for cell_range in cell_ranges:
         # Check if the cell range is a single cell or a range
@@ -275,17 +277,76 @@ def apply_format(ws, cell_ranges, number_format):
             cell.number_format = number_format
 
 
+def read_excel_sheet(file_details):
+    file_path, sheet_name, kwargs = file_details
+    return sheet_name, pd.read_excel(file_path, sheet_name=sheet_name, **kwargs)
 
-def processed_data(input_path,file_path,month_from,month_to,percentage):
 
-    # Open the source workbook
-    index_df = pd.read_excel(input_path, sheet_name="Index", usecols="A:P", nrows=41,header=2)
-    report_grouping_df = pd.read_excel(input_path, sheet_name='report grouping', header=None)
-    planning_df = pd.read_excel(input_path, sheet_name='Repln Items', header=2)
-    TBL_Planning_VerticalReport__3 = pd.read_excel(input_path, sheet_name='Setup Sales -L3M & Future', header=9)
-    Macys_Recpts = pd.read_excel(input_path, sheet_name='Macys Recpts', header=1)
-    All_DATA= pd.read_excel(input_path, sheet_name='All_DATA', header=0)
-    MCOM_Data=pd.read_excel(input_path, sheet_name='MCOM_Data', header=0)
+def process_sheet(sheet_name, config, excel_file_path):
+    """
+    Function to process a single sheet with specified configuration.
+    """
+    print(f"Processing sheet: {sheet_name}")
+    try:
+        # Load the Excel file and process the sheet
+        data = pd.read_excel(excel_file_path, sheet_name=sheet_name, **config)
+        print(f"Finished processing sheet: {sheet_name}")
+        return sheet_name, data
+    except Exception as e:
+        print(f"Error processing sheet {sheet_name}: {e}")
+        return sheet_name, None
+    
+
+def process_data(input_path,file_path,month_from,month_to,percentage):
+       
+    sheet_config = {
+        "Index": {"usecols": "A:P", "nrows": 41, "header": 2},
+        "report grouping": {"header": None},
+        "Repln Items": {"header": 2},
+        "Setup Sales -L3M & Future": {"header": 9},
+        "Macys Recpts": {"header": 1},
+        "All_DATA": {"header": 0},
+        "MCOM_Data": {"header": 0},
+    }
+
+    # Create a multiprocessing pool
+    with mp.Pool() as pool:
+        # Prepare arguments for multiprocessing
+        pool_args = [(sheet_name, config, input_path) for sheet_name, config in sheet_config.items()]
+        
+        # Process each sheet in parallel
+        results = pool.starmap(process_sheet, pool_args)
+
+    # Collect results into a dictionary
+    dataframes = {sheet_name: data for sheet_name, data in results if data is not None}
+    print("All sheets processed successfully!")
+
+    # Store the results into specified variables
+    index_df = dataframes.get("Index")
+    report_grouping_df = dataframes.get("report grouping")
+    planning_df = dataframes.get("Repln Items")
+    TBL_Planning_VerticalReport__3 = dataframes.get("Setup Sales -L3M & Future")
+    Macys_Recpts = dataframes.get("Macys Recpts")
+    All_DATA = dataframes.get("All_DATA")
+    MCOM_Data = dataframes.get("MCOM_Data")
+
+    # Debugging: Print the results for verification
+    if index_df is not None:
+        print(f"Index sheet processed with {len(index_df)} rows.")
+    if report_grouping_df is not None:
+        print(f"Report Grouping sheet processed with {len(report_grouping_df)} rows.")
+    if planning_df is not None:
+        print(f"Planning sheet processed with {len(planning_df)} rows.")
+    if TBL_Planning_VerticalReport__3 is not None:
+        print(f"TBL_Planning_VerticalReport__3 sheet processed with {len(TBL_Planning_VerticalReport__3)} rows.")
+    if Macys_Recpts is not None:
+        print(f"Macys Recpts sheet processed with {len(Macys_Recpts)} rows.")
+    if All_DATA is not None:
+        print(f"All_DATA sheet processed with {len(All_DATA)} rows.")
+    if MCOM_Data is not None:
+        print(f"MCOM_Data sheet processed with {len(MCOM_Data)} rows.")
+
+    
     #make master sheet# Specify the columns you want to extract
     columns_to_extract = [
         'PID', 'Cross ref', 'Sort', 'Dpt ID', 'Dpt Desc', 'Mkst', 'PID Desc',
@@ -1666,7 +1727,7 @@ def processed_data(input_path,file_path,month_from,month_to,percentage):
                 required_quantity_month_dict[last_forecast_month]=required_quantity_month_dict[last_forecast_month]+Calculate_FLDC
                 print("Updated final required_quantity_month_dict",required_quantity_month_dict)
                 #review
-
+                required_quantity_month_dict = {key.upper(): value for key, value in required_quantity_month_dict.items()}
                 for month, oh_value in plan_oh.items():
                     if oh_value < KPI_Door_count:
                         pids_below_door_count.append(pid_value)  # Append the PID to the list if condition is met
