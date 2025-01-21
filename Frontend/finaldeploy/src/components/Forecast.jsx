@@ -18,7 +18,7 @@ function FileUpload() {
   useEffect(() => {
     if(isFileUploaded){
 
-    fetch("http://127.0.0.1:8000/api/sheet/")
+    fetch(`${process.env.REACT_APP_API_BASE_URL}/api/sheet/`)
       .then((response) => response.json())
       .then((data) => {
         console.log("Fetched Data:", data); // Log data to the console
@@ -67,12 +67,12 @@ function FileUpload() {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/forecast/upload/",
+        `${process.env.REACT_APP_API_BASE_URL}/forecast/upload/`,
         formData
       );
 
       const filePathFromServer = response.data.file_path;
-      setDownloadUrl(`http://localhost:8000${filePathFromServer}`);
+      setDownloadUrl(`${process.env.REACT_APP_API_BASE_URL}${filePathFromServer}`);
       setIsFileUploaded(true);
       setErrorMessage(""); // Clear any previous errors
     } catch (error) {

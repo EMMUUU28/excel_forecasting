@@ -35,14 +35,14 @@ function FileUpload() {
     try {
       // First, upload the file and get the file path from the backend
       const response = await axios.post(
-        "http://localhost:8000/api/upload/",
+        `${process.env.REACT_APP_API_BASE_URL}/api/upload/`,
         formData
       );
       console.log("File uploaded:", response);
 
       // Extract the file path from the server response
       const filePathFromServer = response.data.file_path;
-      setDownloadUrl(`http://localhost:8000${filePathFromServer}`); // Store the full file URL for download
+      setDownloadUrl(`${process.env.REACT_APP_API_BASE_URL}${filePathFromServer}`); // Store the full file URL for download
     } catch (error) {
       console.error("Error uploading the file:", error);
       setErrorMessage(
@@ -51,36 +51,7 @@ function FileUpload() {
     }
   };
 
-  //   const handleDownload = async () => {
-  //     try {
-  //       // Request to download the processed file from the backend
-  //       const response = await axios.get(
-  //         "http://localhost:8000/api/api/download/",
-  //         {
-  //           responseType: "blob", // Ensure the response is treated as a file
-  //         }
-  //       );
-  //       console.log("Downl", response);
-
-  //       // Create a URL for the downloaded file
-  //       const url = window.URL.createObjectURL(new Blob([response.data]));
-  //       const link = document.createElement("a");
-  //       link.href = url;
-  //       link.setAttribute("download", `${outputFileName}.xlsx`); // Set the download file name
-  //       document.body.appendChild(link);
-  //       link.click();
-
-  //       // Clean up the URL object
-  //       link.remove();
-  //       window.URL.revokeObjectURL(url);
-  //     } catch (error) {
-  //       console.error("Error downloading the file:", error);
-  //       setErrorMessage(
-  //         error.response ? error.response.data.error : "An error occurred"
-  //       );
-  //     }
-  //   };
-
+  
   return (
     <div>
       <h1>Upload and Process Pricing Sheet</h1>
