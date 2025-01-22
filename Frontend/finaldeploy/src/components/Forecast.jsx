@@ -76,6 +76,10 @@ useEffect(() => {
   };
 
   const handlePercentageChange = (event) => {
+    const value=event.target.value;
+    if(value<0 || value>100)
+        alert("Percantage must be between 0 and 100")
+      else
     setPercentage(event.target.value);
   };
 
@@ -220,7 +224,9 @@ for (let [key, value] of formData.entries()) {
             onChange={handleMonthToChange}
           >
             <option value="">Select Month</option>
-            {months.map((month, index) => (
+            {months
+            .slice(months.indexOf(monthFrom)+1)
+            .map((month, index) => (
               <option key={index} value={month}>{month}</option>
             ))}
           </select>
@@ -228,7 +234,7 @@ for (let [key, value] of formData.entries()) {
         <div className="form-group">
           <label htmlFor="percentage">Enter current month percentage</label>
           <input
-            type="number"
+            type="percentage"
             id="percentage"
             className="input-percentage"
             placeholder="Enter percentage"
