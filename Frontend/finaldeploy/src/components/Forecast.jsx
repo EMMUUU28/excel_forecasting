@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import './Forecast.css';
+import { Upload } from "lucide-react";
 
 function FileUpload() {
   const [file, setFile] = useState(null);
@@ -151,179 +152,352 @@ for (let [key, value] of formData.entries()) {
     "July", "August", "September", "October", "November", "December",
   ];
 
+  const styles = {
+    container: {
+      maxWidth: "900px",
+      margin: "2rem auto",
+      padding: "2.5rem",
+      backgroundColor: "#ffffff",
+      borderRadius: "16px",
+      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+      fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
+    },
+    header: {
+      color: "#1e293b",
+      textAlign: "center",
+      fontSize: "2.25rem",
+      marginBottom: "3rem",
+      fontWeight: "700",
+      letterSpacing: "-0.025em"
+    },
+    form: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "2rem"
+    },
+    formGroup: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.75rem"
+    },
+    label: {
+      fontSize: "0.925rem",
+      fontWeight: "600",
+      color: "#334155",
+      letterSpacing: "-0.01em"
+    },
+    input: {
+      padding: "0.875rem 1rem",
+      borderRadius: "8px",
+      border: "1.5px solid #e2e8f0",
+      fontSize: "0.925rem",
+      transition: "all 0.2s ease",
+      outline: "none",
+      backgroundColor: "#f8fafc",
+      "&:focus": {
+        borderColor: "#3b82f6",
+        boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)"
+      },
+      "&:hover": {
+        borderColor: "#94a3b8"
+      }
+    },
+    fileInput: {
+      padding: "1rem",
+      border: "2px dashed #cbd5e1",
+      borderRadius: "8px",
+      backgroundColor: "#f8fafc",
+      cursor: "pointer",
+      transition: "all 0.2s ease",
+      "&:hover": {
+        borderColor: "#3b82f6",
+        backgroundColor: "#f1f5f9"
+      }
+    },
+    categoriesContainer: {
+      backgroundColor: "#f8fafc",
+      padding: "1.5rem",
+      borderRadius: "12px",
+      border: "1px solid #e2e8f0",
+      marginTop: "1.5rem"
+    },
+    categoryHeader: {
+      fontSize: "1.125rem",
+      fontWeight: "700",
+      color: "#1e293b",
+      marginBottom: "1.25rem"
+    },
+    checkboxGroup: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+      gap: "1rem"
+    },
+    checkboxLabel: {
+      display: "flex",
+      alignItems: "center",
+      gap: "0.75rem",
+      fontSize: "0.925rem",
+      color: "#475569",
+      padding: "0.5rem",
+      borderRadius: "6px",
+      cursor: "pointer",
+      transition: "all 0.2s ease",
+      "&:hover": {
+        backgroundColor: "#f1f5f9"
+      }
+    },
+    checkbox: {
+      width: "1.125rem",
+      height: "1.125rem",
+      accentColor: "#3b82f6"
+    },
+    button: {
+      padding: "1rem 1.5rem",
+      backgroundColor: "#3b82f6",
+      color: "white",
+      border: "none",
+      borderRadius: "8px",
+      fontSize: "1rem",
+      fontWeight: "600",
+      cursor: "pointer",
+      transition: "all 0.2s ease",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "0.75rem",
+      "&:hover": {
+        backgroundColor: "#2563eb",
+        transform: "translateY(-1px)"
+      },
+      "&:disabled": {
+        backgroundColor: "#94a3b8",
+        cursor: "not-allowed",
+        transform: "none"
+      }
+    },
+    downloadButton: {
+      backgroundColor: "#059669",
+      marginTop: "1.5rem",
+      textDecoration: "none",
+      "&:hover": {
+        backgroundColor: "#047857"
+      }
+    },
+    table: {
+      width: "100%",
+      borderCollapse: "separate",
+      borderSpacing: "0",
+      marginTop: "1.5rem",
+      backgroundColor: "#fff",
+      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+      borderRadius: "12px",
+      overflow: "hidden"
+    },
+    th: {
+      backgroundColor: "#f8fafc",
+      padding: "1rem 1.25rem",
+      textAlign: "left",
+      fontSize: "0.925rem",
+      fontWeight: "600",
+      color: "#1e293b",
+      borderBottom: "1px solid #e2e8f0"
+    },
+    td: {
+      padding: "1rem 1.25rem",
+      fontSize: "0.925rem",
+      color: "#475569",
+      borderBottom: "1px solid #e2e8f0"
+    },
+    error: {
+      color: "#dc2626",
+      marginTop: "1rem",
+      textAlign: "center",
+      padding: "1rem",
+      backgroundColor: "#fef2f2",
+      borderRadius: "8px",
+      border: "1px solid #fee2e2"
+    },
+    loader: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "1.5rem",
+      marginTop: "2.5rem"
+    },
+    spinner: {
+      width: "2.5rem",
+      height: "2.5rem",
+      border: "3px solid #e2e8f0",
+      borderTop: "3px solid #3b82f6",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite"
+    }
+  };
+
   return (
-    <div className="container">
-      <h1 className="header">Upload Forecasting Sheet</h1>
+    <div style={styles.container}>
+      <h1 style={styles.header}>Forecast Upload Dashboard</h1>
       
-      <form className="upload-form" onSubmit={handleSubmit}>
-      <label>Select sheet to get forecasting information</label>
-
-        <div className="form-group">
-          <input type="file" className="input-file" onChange={handleFileChange} />
+      <form style={styles.form} onSubmit={handleSubmit}>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Upload Forecasting Sheet</label>
+          <input 
+            type="file" 
+            style={{...styles.input, ...styles.fileInput}}
+            onChange={handleFileChange} 
+          />
         </div>
-        <label htmlFor="">Enter output filename</label>
 
-        <div className="form-group">
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Output Filename</label>
           <input
             type="text"
-            className="input-text"
+            style={styles.input}
             placeholder="Enter output file name"
             value={outputFileName}
             onChange={handleFileNameChange}
           />
         </div>
-        <label htmlFor="">Select STD Period</label>
 
-   {/* categories names */}
-   <div>
-    <h3>Categories</h3>
-    <div>
-        <label>
-            <input
+        <div style={styles.categoriesContainer}>
+          <h3 style={styles.categoryHeader}>Product Categories</h3>
+          <div style={styles.checkboxGroup}>
+            <label style={styles.checkboxLabel}>
+              <input
                 type="checkbox"
+                style={styles.checkbox}
                 checked={isSelectAll}
                 onChange={handleSelectAllChange}
-            />
-            Select All
-        </label>
-    </div>
-    {categoryTuples.map(([name, value], index) => (
-        <div key={value}>
-            <label>
-                <input
-                    type="checkbox"
-                    checked={checkedItems[index]}
-                    onChange={() => handleCheckboxChange(index)}
-                />
-                {`${name}, ${value}`}
+              />
+              Select All
             </label>
+            {categoryTuples.map(([name, value], index) => (
+              <label key={value} style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  style={styles.checkbox}
+                  checked={checkedItems[index]}
+                  onChange={() => handleCheckboxChange(index)}
+                />
+                {`${name} (${value})`}
+              </label>
+            ))}
+          </div>
         </div>
-    ))}
-</div>
 
-        <div className="form-group">
-          <label htmlFor="monthFrom">Month From:</label>
-          <select
-            id="monthFrom"
-            className="input-month"
-            value={monthFrom}
-            onChange={handleMonthFromChange}
-          >
-            <option value="">Select Month</option>
-            {months.map((month, index) => (
-              <option key={index} value={month}>{month}</option>
-            ))}
-          </select>
+        <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem"}}>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Month From</label>
+            <select style={styles.input} value={monthFrom} onChange={handleMonthFromChange}>
+              <option value="">Select Month</option>
+              {months.map((month, index) => (
+                <option key={index} value={month}>{month}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Month To</label>
+            <select style={styles.input} value={monthTo} onChange={handleMonthToChange}>
+              <option value="">Select Month</option>
+              {months
+                .slice(months.indexOf(monthFrom) + 1)
+                .map((month, index) => (
+                  <option key={index} value={month}>{month}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="form-group">
-          <label htmlFor="monthTo"> Month To:</label>
-          <select
-            id="monthTo"
-            className="input-month"
-            value={monthTo}
-            onChange={handleMonthToChange}
-          >
-            <option value="">Select Month</option>
-            {months
-            .slice(months.indexOf(monthFrom)+1)
-            .map((month, index) => (
-              <option key={index} value={month}>{month}</option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group">
-          <label htmlFor="percentage">Enter current month percentage</label>
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Current Month Percentage</label>
           <input
-            type="percentage"
-            id="percentage"
-            className="input-percentage"
-            placeholder="Enter percentage"
+            type="number"
+            style={styles.input}
+            placeholder="Enter percentage (0-100)"
             value={percentage}
             onChange={handlePercentageChange}
           />
         </div>
-        <button type="submit" className="submit-btn" disabled={loading}>
+
+        <button style={styles.button} type="submit" disabled={loading}>
+          <Upload size={18} />
           {loading ? "Processing..." : "Upload and Process"}
         </button>
       </form>
 
       {loading && (
-        <div className="loader">
-          <div className="spinner"></div>
-          <p>Processing your request, please wait...</p>
+        <div style={styles.loader}>
+          <div style={styles.spinner} />
+          <p style={{ color: "#475569", fontSize: "1rem" }}>Processing your request...</p>
         </div>
       )}
 
       {downloadUrl && (
-        <a href={downloadUrl} className="download-link" download={outputFileName + ".zip"}>
+        <a 
+          href={downloadUrl}
+          style={{...styles.button, ...styles.downloadButton}}
+          download={outputFileName + ".zip"}
+        >
           Download Processed File
         </a>
       )}
 
-{errorMessage && <p className="error-message">{errorMessage}</p>}
-{console.log(data)}
+      {errorMessage && (
+        <p style={styles.error}>{errorMessage}</p>
+      )}
 
-{/*  data && Displaying data from demo.json only if file is uploaded successfully */}
-{  isFileUploaded && data && (
-  <div className="data-section">
-    <h2>Select Sheet</h2>
-    <select className="sheet-dropdown" value={selectedSheet} onChange={handleSheetChange}>
-      <option value="">Select Sheet</option>
-      {Object.keys(data).map((sheet) => (
-        <option key={sheet} value={sheet}>
-          {sheet}
-        </option>
-      ))}
-    </select>
+      {isFileUploaded && data && (
+        <div style={{ marginTop: "2.5rem" }}>
+          <h2 style={styles.categoryHeader}>Sheet Selection</h2>
+          <select 
+            style={styles.input}
+            value={selectedSheet} 
+            onChange={handleSheetChange}
+          >
+            <option value="">Select a Sheet</option>
+            {Object.keys(data).map((sheet) => (
+              <option key={sheet} value={sheet}>{sheet}</option>
+            ))}
+          </select>
 
-    {/* Show loading spinner while the sheet is being loaded */}
-    {loading && (
-      <div className="loader">
-        <div className="spinner"></div>
-      </div>
-    )}
-
-    {/* Display the sheet data after 3 seconds */}
-    {!loading && selectedSheet && (
-      <div className="sheet-data">
-        <h3>Attributes and Data for {selectedSheet}:</h3>
-        <table className="data-table">
-          <thead>
-            <tr>
-              {Object.keys(data[selectedSheet]).map((attribute) => (
-                <th key={attribute}>
-                  {formatAttributeName(attribute)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {Object.keys(data[selectedSheet]).map((attribute) => (
-                <td key={attribute}>
-                  {data[selectedSheet][attribute].length > 0 ? (
-                    data[selectedSheet][attribute].map((item, index) => (
-                      <div key={index}>{item}</div>
-                    ))
-                  ) : (
-                    <p>No data available</p>
-                  )}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    )}
-  </div>
-)}
-      {/* <pre>{JSON.stringify(data, null, 2)}</pre>  */}
-      {/* Display raw JSON */}
-{/* Display data dynamically */}
-
-</div>
-);
+          {!loading && selectedSheet && (
+            <div style={{ marginTop: "1.5rem" }}>
+              <h3 style={styles.categoryHeader}>{selectedSheet} Sheet Data</h3>
+              <div style={{ overflowX: "auto" }}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      {Object.keys(data[selectedSheet]).map((attribute) => (
+                        <th key={attribute} style={styles.th}>
+                          {formatAttributeName(attribute)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      {Object.keys(data[selectedSheet]).map((attribute) => (
+                        <td key={attribute} style={styles.td}>
+                          {data[selectedSheet][attribute].length > 0 ? (
+                            data[selectedSheet][attribute].map((item, index) => (
+                              <div key={index}>{item}</div>
+                            ))
+                          ) : (
+                            <p>No data available</p>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default FileUpload;
-
