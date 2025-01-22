@@ -14,20 +14,51 @@ function FileUpload() {
   const [selectedSheet, setSelectedSheet] = useState("");
   const [loading, setLoading] = useState(false); // Manage loading state
   const [isFileUploaded, setIsFileUploaded] = useState(false);
+  const categoryTuples = [
+    ['Bridge Gem', '742'],
+    ['Gold', '746'],
+    ['Gold', '262&270'],
+    ['Womens Silver', '260&404'],
+    ['Precious', '264&268'],
+    ['Fine Pearl', '265&271'],
+    ['Semi', '272&733'],
+    ['Diamond', '734&737&748'],
+    ['Bridal', '739&267&263'],
+    ["Men's", '768&771']
+];
 
-  useEffect(() => {
-    if(isFileUploaded){
+const [checkedItems, setCheckedItems] = useState(
+  new Array(categoryTuples.length).fill(false)
+);
+const [isSelectAll, setIsSelectAll] = useState(false);
 
-    fetch(`${process.env.REACT_APP_API_BASE_URL}/api/sheet/`)
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Fetched Data:", data); // Log data to the console
-        setData(data);
-      })
-      .catch((error) => console.error("Error fetching data from API:", error));
-    }
-  }, [isFileUploaded]);
 
+  const handleCheckboxChange = (index) => {
+    const updatedCheckedItems = [...checkedItems];
+    updatedCheckedItems[index] = !updatedCheckedItems[index];
+    setCheckedItems(updatedCheckedItems);
+
+    // Update "Select All" state if all items are selected
+    setIsSelectAll(updatedCheckedItems.every((item) => item));
+};
+
+const handleSelectAllChange = () => {
+    const newState = !isSelectAll;
+    setIsSelectAll(newState);
+    setCheckedItems(new Array(categoryTuples.length).fill(newState));
+};
+useEffect(() => {
+  if(isFileUploaded){
+
+  fetch(`${process.env.REACT_APP_API_BASE_URL}/api/sheet/`)
+    .then((response) => response.json())
+    .then((data) => {
+      console.log("Fetched Data:", data); // Log data to the console
+      setData(data);
+    })
+    .catch((error) => console.error("Error fetching data from API:", error));
+  }
+}, [isFileUploaded]);
   const handleFileChange = (event) => {
     setFile(event.target.files[0]);
   };
@@ -56,13 +87,21 @@ function FileUpload() {
       return;
     }
 
+    const selectedCategories = categoryTuples
+    .filter((_, index) => checkedItems[index])
+    .map(([name, value]) => ({ name, value }));
+
+  if (selectedCategories.length === 0) {
+    alert("Please select at least one category.");
+    return;
+  }
     const formData = new FormData();
     formData.append("file", file);
     formData.append("output_filename", outputFileName);
     formData.append("month_from", monthFrom);
     formData.append("month_to", monthTo);
     formData.append("percentage", percentage);
-
+    formData.append("categories", JSON.stringify(selectedCategories));
     setLoading(true); // Show loader
 
     try {
@@ -70,7 +109,11 @@ function FileUpload() {
         `${process.env.REACT_APP_API_BASE_URL}/forecast/upload/`,
         formData
       );
-
+      console.log("FormData Contents:");
+for (let [key, value] of formData.entries()) {
+  console.log(`${key}: ${value}`);
+}
+      
       const filePathFromServer = response.data.file_path;
       setDownloadUrl(`${process.env.REACT_APP_API_BASE_URL}${filePathFromServer}`);
       setIsFileUploaded(true);
@@ -126,7 +169,34 @@ function FileUpload() {
           />
         </div>
         <label htmlFor="">Select STD Period</label>
-        
+
+   {/* categories names */}
+   <div>
+    <h3>Categories</h3>
+    <div>
+        <label>
+            <input
+                type="checkbox"
+                checked={isSelectAll}
+                onChange={handleSelectAllChange}
+            />
+            Select All
+        </label>
+    </div>
+    {categoryTuples.map(([name, value], index) => (
+        <div key={value}>
+            <label>
+                <input
+                    type="checkbox"
+                    checked={checkedItems[index]}
+                    onChange={() => handleCheckboxChange(index)}
+                />
+                {`${name}, ${value}`}
+            </label>
+        </div>
+    ))}
+</div>
+
         <div className="form-group">
           <label htmlFor="monthFrom">Month From:</label>
           <select
