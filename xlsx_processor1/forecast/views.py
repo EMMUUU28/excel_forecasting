@@ -185,10 +185,14 @@ def upload_xlsx(request):
             month_from = request.POST.get('month_from')
             month_to = request.POST.get('month_to')
             percentage = request.POST.get('percentage')
+            categories = request.POST.get('categories')
 
+            print("categories--> ",categories)
             print("month_from", month_from)
             print("month_to", month_to)
             print("percentage", percentage)
+
+            input_tuple = [(item['name'], item['value']) for item in categories]
 
 
             # Ensure the directory exists within MEDIA_ROOT
@@ -206,7 +210,7 @@ def upload_xlsx(request):
             try:
                 # processed_data(INPUT_EXCEL_FILE, OUTPUT_EXCEL_FILE)  # Ensure this function is defined elsewhere
                 start_time = time.time()
-                process_data(INPUT_EXCEL_FILE,file_path,month_from,month_to,percentage) 
+                process_data(INPUT_EXCEL_FILE,file_path,month_from,month_to,percentage,input_tuple) 
                 end_time = time.time() 
                 elapsed_time = end_time - start_time
                 print(f"Function executed in {elapsed_time:.6f} seconds")
@@ -2973,8 +2977,10 @@ def process_category(args):
     }
     return result
 
+def convert_to_tuples(categories):
+    return [(category['name'], category['value']) for category in categories]
 
-def process_data(input_path,file_path,month_from,month_to,percentage):
+def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple):
 
     print("input_path------>",input_path)
 
@@ -3321,55 +3327,24 @@ def process_data(input_path,file_path,month_from,month_to,percentage):
     current_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks = get_previous_retail_week()
 
 
-    # categories = {
-    #     "Bridge Gem": "742",
-    #     "Gold": "746",
-    #     "Womens Silver": "260&404",
-    #     "Gold": "262&270",
-    #     "Precious": "264&268",
-    #     "Fine Pearl": "265&271",
-    #     "Semi": "272&733",
-    #     "Diamond": "734&737&748",
-    #     "Bridal": "739&267&263",
-    #     "Men's": "768&771"
-    # }
+   
+#     category_tuples=[
 
-    # # Create a dynamic dictionary by populating the count values from report_grouping_df
-    # dynamic_categories = {
-    #     category: (
-    #         code,
-    #         report_grouping_df.loc[
-    #             report_grouping_df[0].str.upper() == f"{category.upper()}{code}".upper(), 3
-    #         ].iloc[0] if not report_grouping_df.loc[
-    #             report_grouping_df[0].str.upper() == f"{category.upper()}{code}".upper()
-    #         ].empty else None  # Handle missing values
-    #     )
-    #     for category, code in categories.items()
-    # }
-    category_tuples=[
- 
-    ('Bridge Gem', '742'),
- 
-    ('Gold', '746'),
- 
-    ('Gold', '262&270'),
- 
-    ('Womens Silver', '260&404'),
- 
-    ('Precious', '264&268'),
- 
-    ('Fine Pearl', '265&271'),
- 
-    ('Semi', '272&733'),
- 
-    ('Diamond', '734&737&748'),
- 
-    ('Bridal', '739&267&263'),
- 
-    ("Men's", '768&771')
- 
-]
- 
+#     ('Bridge Gem', '742'),
+#     ('Gold', '746'),
+#     ('Gold', '262&270'),
+#     ('Womens Silver', '260&404'),
+#     ('Precious', '264&268'),
+#     ('Fine Pearl', '265&271'),
+#     ('Semi', '272&733'),
+#     ('Diamond', '734&737&748'),
+#     ('Bridal', '739&267&263'),
+#     ("Men's", '768&771')
+
+# ]
+    category_tuples = input_tuple
+    
+    
     dynamic_categories = [
     (
         category,
@@ -3381,6 +3356,7 @@ def process_data(input_path,file_path,month_from,month_to,percentage):
         ].empty else None  # Handle missing values
     )
     for category, code in category_tuples]
+    
     month_dict = {
         "Feb": 1,
         "Mar": 2,
