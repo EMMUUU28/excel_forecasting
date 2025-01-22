@@ -192,7 +192,12 @@ def upload_xlsx(request):
             print("month_to", month_to)
             print("percentage", percentage)
 
-            input_tuple = [(item['name'], item['value']) for item in categories]
+            if categories:
+                categories = json.loads(categories)  # Convert JSON string to list of dictionaries
+                input_tuple = [(item['name'], item['value']) for item in categories]
+                print("input_tuple--> ", input_tuple)
+            else:
+                input_tuple = []
 
 
             # Ensure the directory exists within MEDIA_ROOT
