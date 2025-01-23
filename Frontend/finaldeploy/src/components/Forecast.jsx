@@ -293,6 +293,7 @@ for (let [key, value] of formData.entries()) {
       borderRadius: "12px",
       overflow: "hidden"
     },
+
     th: {
       backgroundColor: "#f8fafc",
       padding: "1rem 1.25rem",
@@ -307,6 +308,7 @@ for (let [key, value] of formData.entries()) {
       fontSize: "0.925rem",
       color: "#475569",
       borderBottom: "1px solid #e2e8f0"
+      
     },
     error: {
       color: "#dc2626",
@@ -465,32 +467,30 @@ for (let [key, value] of formData.entries()) {
             <div style={{ marginTop: "1.5rem" }}>
               <h3 style={styles.categoryHeader}>{selectedSheet} Sheet Data</h3>
               <div style={{ overflowX: "auto" }}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      {Object.keys(data[selectedSheet]).map((attribute) => (
-                        <th key={attribute} style={styles.th}>
-                          {formatAttributeName(attribute)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {Object.keys(data[selectedSheet]).map((attribute) => (
-                        <td key={attribute} style={styles.td}>
-                          {data[selectedSheet][attribute].length > 0 ? (
-                            data[selectedSheet][attribute].map((item, index) => (
-                              <div key={index}>{item}</div>
-                            ))
-                          ) : (
-                            <p>No data available</p>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
+              <table style={styles.table}>
+  <thead>
+    <tr>
+      {Object.keys(data[selectedSheet]).map((attribute) => (
+        <th key={attribute} style={styles.th}>
+          {formatAttributeName(attribute)}
+        </th>
+      ))}
+    </tr>
+  </thead>
+  <tbody>
+    {/* Get the maximum number of items in any column to handle row splitting */}
+    {Array.from({ length: Math.max(...Object.values(data[selectedSheet]).map(col => col.length)) }).map((_, rowIndex) => (
+      <tr key={rowIndex} style={{ borderBottom: '1px solid #ddd' }}>
+        {Object.keys(data[selectedSheet]).map((attribute) => (
+          <td key={attribute} style={styles.td}>
+            {data[selectedSheet][attribute][rowIndex] || <p>No data available</p>}
+          </td>
+        ))}
+      </tr>
+    ))}
+  </tbody>
+</table>
+
               </div>
             </div>
           )}
