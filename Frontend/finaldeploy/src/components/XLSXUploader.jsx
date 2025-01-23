@@ -147,6 +147,21 @@ function FileUpload() {
       borderRadius: "6px",
       fontSize: "0.875rem",
       color: "#475569"
+    },
+    loader: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "1.5rem",
+      marginTop: "2.5rem"
+    },
+    spinner: {
+      width: "2.5rem",
+      height: "2.5rem",
+      border: "3px solid #e2e8f0",
+      borderTop: "3px solid #3b82f6",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite"
     }
   };
 
@@ -257,12 +272,15 @@ function FileUpload() {
           onMouseLeave={(e) => Object.assign(e.target.style, { transform: 'none' })}
         >
           {isUploading ? (
-            <>Processing...</>
+            <>
+             <Upload size={18} />Processing...
+            </>
           ) : (
             <>
               <Upload size={18} /> Upload and Process
             </>
           )}
+      
           {isUploading && (
             <div 
               style={{
@@ -273,7 +291,12 @@ function FileUpload() {
           )}
         </button>
       </form>
-
+{isUploading && (
+    <div style={styles.loader}>
+    <div style={styles.spinner} />
+    <p style={{ color: "#475569", fontSize: "1rem" }}>Processing your request...</p>
+  </div>
+)}
       {downloadUrl && (
         <div style={styles.successContainer}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669' }}>
