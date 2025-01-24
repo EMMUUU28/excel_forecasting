@@ -820,6 +820,8 @@ def process_category(args):
 
 
                         #algorithm
+
+
         #######step1####################
         # Function to get Lead Time by PID
         def get_lead_time_by_pid(pid_value):
@@ -843,37 +845,84 @@ def process_category(args):
                 if country=='Italy':
                     lead_time=14
             return lead_time 
+        
         lead_time = get_lead_time_by_pid(pid_value)
         #print('lead_time',lead_time) 
-            # Function to get the 3-letter month abbreviation based on the month number
+        # Function to get the 3-letter month abbreviation based on the month number
         # Retail calendar month sequence
         retail_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
 
-        def calculate_forecast_months(lead_time_weeks, current_month):
-            # Handle NaN or None for lead_time_weeks by setting a default value of 8
-            if lead_time_weeks is None or (isinstance(lead_time_weeks, float) and math.isnan(lead_time_weeks)):
-                lead_time_weeks = 8
+        # Print intermediate results for debugging
+        def convert_month_to_abbr(full_month):
+            # Define mapping of full month names to abbreviations
+            month_mapping = {
+                "January": "Jan",
+                "February": "Feb",
+                "March": "Mar",
+                "April": "Apr",
+                "May": "May",
+                "June": "Jun",
+                "July": "Jul",
+                "August": "Aug",
+                "September": "Sep",
+                "October": "Oct",
+                "November": "Nov",
+                "December": "Dec"
+            }
+                
+            # Return the corresponding abbreviation, or None if not found
+            return month_mapping.get(full_month, None)
+        
+        def calculate_forecast_months(lead_time_weeks, current_date,current_month):
+            # Calculate the lead time in days
+            lead_time_days = lead_time_weeks * 7
+            
+            # Calculate the forecast date
+            forecast_date = current_date + timedelta(days=lead_time_days)
+            
+            # Extract the forecast month and year
+            forecast_month = forecast_date.strftime("%B")  # Full month name
+            forecast_year = forecast_date.year
+            forecast_month_abbr = convert_month_to_abbr(forecast_month)
+            print("forecast_month ",forecast_month_abbr)
+            print("current_month",current_month)  
 
-            # Calculate months from weeks (approx. 4 weeks in a month)
-            lead_time_months = math.ceil(lead_time_weeks / 4)  # Use math.ceil to round up to the next full month
+            # Calculate the week of the forecast month
+            first_day_of_month = forecast_date.replace(day=1)
+            days_diff = (forecast_date - first_day_of_month).days
+            week_of_forecast_month = math.ceil((days_diff + 1) / 7)  # +1 to include the current day in the week count
 
-            # Get the index of the current month in the retail calendar
-            current_index = retail_months.index(current_month)
+            # Calculate the week of the current month
+            first_day_of_current_month = current_date.replace(day=1)
+            days_diff_current = (current_date - first_day_of_current_month).days
+            week_of_current_month = math.ceil((days_diff_current + 1) / 7)
 
-            # List to store the forecast months
-            forecast_months = []
-
-            # Add months to the current month, starting from the next month
-            for i in range(1, lead_time_months + 1):
-                new_index = (current_index + i) % len(retail_months)  # Calculate the next month's index
-                forecast_months.append(retail_months[new_index])
-
-            return forecast_months
+            # Define the month names in 3-letter format
+            #month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            
+            # # Create the list of months
+            # start = month_names.index(current_month) + 1
+            # end = month_names.index(forecast_month_abbr) + 1
+            forecast_month_list =  [forecast_month_abbr]
 
 
-        forecast_months = calculate_forecast_months(lead_time,current_month)
-        #print('forecast_months',forecast_months)
-        retail_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
+            # Display the result
+            print(f"Forecast month is {forecast_month} {forecast_year}")
+            print(f"Week of the forecast month: Week {week_of_forecast_month}")
+            print(f"Current month is {current_date.strftime('%B')} {current_date.year}")
+            print(f"Week of the current month: Week {week_of_current_month}")
+            print(f"Forecast months list: {forecast_month_list}")
+
+            return forecast_month_list , week_of_forecast_month , forecast_month
+
+        # Get the current date
+        current_date = datetime.today()
+        if math.isnan(lead_time):
+            lead_time = 8
+   
+        forecast_months ,week_of_forecast_month ,forecast_month = calculate_forecast_months(lead_time,current_date,current_month)
+
+        
         #Step 2 :  Find STD period###################
         def get_std_months(current_month):
             # Retail calendar month sequence
@@ -902,27 +951,10 @@ def process_category(args):
             
             return std_months
 
-        def convert_month_to_abbr(full_month):
-            # Define mapping of full month names to abbreviations
-            month_mapping = {
-                "January": "Jan",
-                "February": "Feb",
-                "March": "Mar",
-                "April": "Apr",
-                "May": "May",
-                "June": "Jun",
-                "July": "Jul",
-                "August": "Aug",
-                "September": "Sep",
-                "October": "Oct",
-                "November": "Nov",
-                "December": "Dec"
-            }
-            
-            # Return the corresponding abbreviation, or None if not found
-            return month_mapping.get(full_month, None)
         
         months_new = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
+        
+        
         def get_month_range(months, month_start, endMonth):
             # Find the start and end indices in the months list
             start_index = months.index(month_start)
@@ -937,6 +969,7 @@ def process_category(args):
                 selected_months = months[start_index:end_index + 1]
         
             return selected_months
+        
         if month_from and month_to:
             first_month_std=convert_month_to_abbr(month_from).upper()
             last_mont_std=convert_month_to_abbr(month_to).upper()
@@ -964,10 +997,13 @@ def process_category(args):
             std_trend = (sum(STD_TY_Unit_Sales_list) - sum(STD_LY_Unit_Sales_list)) / sum(STD_LY_Unit_Sales_list)
         else:
             std_trend = 0
+
         std_trend=round(std_trend, 2)
         #print("std_trend:", std_trend)
         # Get the door count from cell C10
+
         retail_months_upper = [month.upper() for month in retail_months]
+
         def check_product_type( ):
             
             All_TY_Unit_Sales_list=[LY_Unit_Sales[month] for month in retail_months_upper]
@@ -1079,23 +1115,30 @@ def process_category(args):
 
             if fc_by_index is not None and fc_by_trend is not None:
                 difference = (abs(fc_by_trend - fc_by_index) / max(fc_by_index,fc_by_trend))* 100 
+
             #print('difference',difference)
+
             def find_forecasting_method_index(difference, door_count, this_year_std_store_eom_oh, month_12_fc_index):
                 # Check if the difference is more than 15%
                 if difference > 15:            
                     average_value = sum(this_year_std_store_eom_oh) / len(this_year_std_store_eom_oh)
                     loss = (door_count / average_value) - 1
-                    #print("loss : ",loss)
+                    print("loss : ",loss)
                     rank =Item_Code
 
-                    #print('rank',rank)
-                    if rank == 'A' or rank == 'B':
-                        loss_percent = min(loss, 0.45)  # Maximum of 45% for Rank A or B
-                    elif rank == 'C':
-                        loss_percent = min(loss, 0.15)  # Maximum of 15% for Rank C
+                    print('rank',rank)
+                    if Own_Retail < 1000:
+                        if rank == 'A' or rank == 'B':
+                            loss_percent = min(loss, 0.45)  # Maximum of 45% for Rank A or B
+                        elif rank == 'C':
+                            loss_percent = min(loss, 0.15)  # Maximum of 15% for Rank C
+                        else:
+                            loss_percent = min(loss,0.10)  # No loss for Rank D or E
                     else:
-                        loss_percent = loss  # No loss for Rank D or E
-                    #print('loss_percent',loss_percent)
+                        loss_percent = min(loss, 0.15)
+
+                    print('loss_percent',loss_percent)
+
                     month_12_fc_index = round(month_12_fc_index * (1 + loss_percent))
                     forecasting_method = "FC by Index"  # Write the value to the merged cell
                 else:
@@ -1249,7 +1292,7 @@ def process_category(args):
             row_43=LY_OH_Units
 
             row_17=TY_Unit_Sales
-                    # Create a dictionary for Birthstones and corresponding months based on the Birthstone sheet
+            # Create a dictionary for Birthstones and corresponding months based on the Birthstone sheet
             # Initialize output dictionary for Planned EOH (Cal)
 
             # Loop through months
@@ -1316,7 +1359,7 @@ def process_category(args):
             #print('plan_eoh',plan_oh)
             required_quantity_month_dict = {}
 
-                # #print intermediate results for debugging
+            # #print intermediate results for debugging
 
 
             # Check if the filtered DataFrame is not empty
@@ -1369,59 +1412,177 @@ def process_category(args):
                 for month in forecast_months:
                     required_quantity_month_dict[month] = KPI_Door_count
             #print(f"Updatedf required_quantity_month_dict: {required_quantity_month_dict}")
-            average_store_eom_oh = []
-            #print(forecast_months)
-            months_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-            # Find the last month in the forecast_months list
-            last_forecast_month = forecast_months[-1]
-            # Find the index of the last forecast month in months_list
-            last_month_index = months_list.index(last_forecast_month)
-            next_month_fldc = months_list[(last_month_index + 1) % len(months_list)]
-            #print("Next month after the forecast months:", next_month_fldc)
-            next_month_fldc=next_month_fldc.upper()
-            Calculate_FLDC=round((planned_fc[next_month_fldc])/2)
-            #print('Calculate_FLDC_for_next_month',Calculate_FLDC)
-            std_ly_store_eom_oh=[LY_MCOM_OH_Units[month] for month in forecast_months_upper]
-            #print('lastyear avg COM EOM OH for forecastmonth ',std_ly_store_eom_oh)
-            value_to_add = round(((sum(std_ly_store_eom_oh)/len(std_ly_store_eom_oh))),0)
-            #print("Extra value to add : ",value_to_add)
-            required_quantity_month_dict = {key: val + value_to_add for key, val in required_quantity_month_dict.items()}
-            required_quantity_month_dict[last_forecast_month]=required_quantity_month_dict[last_forecast_month]+Calculate_FLDC
-            #print("Updated final required_quantity_month_dict",required_quantity_month_dict)
-            #review
+
             required_quantity_month_dict = {key.upper(): value for key, value in required_quantity_month_dict.items()}
-            for month, oh_value in plan_oh.items():
-                if oh_value < KPI_Door_count:
-                    pids_below_door_count.append(pid_value)  # Append the PID to the list if condition is met
-                    break
-                    # Loop through each month to check the conditions
+
+            ly_com_eom_oh=[LY_MCOM_OH_Units[month] for month in ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL','AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']]
+            print('lastyear avg COM EOM OH for forecast month ',ly_com_eom_oh)
+            average_com_eom_oh = round(((sum(ly_com_eom_oh)/len(ly_com_eom_oh))),0)
+            print("Extra value to add average_eom_oh : ",average_com_eom_oh)
+            if not average_com_eom_oh :
+                average_com_eom_oh = 2
+
+            print(forecast_months)
+            months_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+            # Convert the months in `forecast_months` to uppercase to match keys in `planned_fc`
+            forecast_months_upper = [month.upper() for month in forecast_months]
+
+            # Loop through each forecast month, calculate FLDC, and update the dictionary
+            for month in forecast_months:    
+                index = months_list.index(month)
+                next_month_fldc = months_list[(index + 1) % len(months_list)]
+                next_month_fldc=next_month_fldc.upper()
+                # Calculate FLDC for the current month
+                Calculate_FLDC = round((planned_fc[next_month_fldc]) / 2)
+                print(f"Calculate_FLDC for {month}: {Calculate_FLDC}")
+                month=month.upper()
+                # Update the required_quantity_month_dict
+                required_quantity_month_dict[month] = (
+                    required_quantity_month_dict.get(month, 0) + Calculate_FLDC + average_com_eom_oh
+                )          
+            print("Updated final required_quantity_month_dict",required_quantity_month_dict)
+
+            total_gross_projection_added = 0
             for i, month in enumerate(forecast_months_upper):
                 # Step 1: Check if planned_oh for the month is less than the required quantity for that month
                 required_quantity = required_quantity_month_dict.get(month, 0)  # Get the required quantity for the month
-                #print(month,required_quantity)
+
+                print(month,required_quantity)
+                print("plan_oh[month]",plan_oh[month])
+                print("required_quantity",required_quantity)
                 if plan_oh[month] < required_quantity:
                     # Calculate the difference between required quantity and planned OH
-                    difference = required_quantity - plan_oh[month]            
+                    difference = required_quantity - plan_oh[month]     
                     # Update the gross_projection for that month with the calculated difference
                     planned_shp[month] += difference
                     plan_oh[month] += difference
-            
-                    #print(f"Updated gross projection for {month}: {planned_shp[month]}")
+                    pids_below_door_count.append(pid_value)
+                    total_gross_projection_added += difference
+                    print(f"Updated gross projection for {month}: {planned_shp[month]}")
                 else:
                     print(f"No update needed for {month} as planned_oh is greater than required quantity.")
         
-                #print("i : ",i)
                 if i+1 <= len(forecast_months_upper)-1:
                     next_month = forecast_months_upper[i+1]
-
                     # Update planned_oh for next month using the formula
-                    #print("Next month:", next_month)
+                    print("Next month:", next_month)
                     plan_oh[next_month] = (planned_shp[next_month] + plan_oh[month]) - planned_fc[next_month]
-                    #print(f"Updated planned_oh for {next_month}: {plan_oh[next_month]}")
-            # #print final values for verification
-            #print('planned_fc',planned_fc)
-            #print("Final planned_oh:", plan_oh)
-            #print("Final gross_projection:", planned_shp)
+                    print(f"Updated planned_oh for {next_month}: {plan_oh[next_month]}")
+
+            print("week_of_forecast_month" ,week_of_forecast_month)
+            if week_of_forecast_month > 2:
+                
+                print("forecast_month list: ",forecast_months)
+                last_forecast_month = forecast_months[-1] 
+                # Find the index of the last month
+                last_index = months_list.index(last_forecast_month)                
+                # Get the next month (wrap around using modulo)
+                next_forecast_month = months_list[(last_index + 1) % len(months_list)]
+                print("last forecast month : ", last_forecast_month)
+                last_forecast_month = last_forecast_month.upper()
+                next_forecast_month = next_forecast_month.upper()
+                plan_oh[next_forecast_month] = (planned_shp[next_forecast_month] + plan_oh[last_forecast_month]) - planned_fc[next_forecast_month]
+                if plan_oh[next_forecast_month] < KPI_Door_count:
+                    difference = KPI_Door_count - plan_oh[next_forecast_month] 
+                    planned_shp[last_forecast_month] += difference
+                    total_gross_projection_added += difference
+                    pids_below_door_count.append(pid_value)
+            
+            def calculate_week_and_month(start_month_abbr, start_week, year, weeks_to_add):
+                # Map abbreviated month names to their respective numbers
+                month_map = {
+                    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4,
+                    "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
+                    "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+                }
+                print("start_month_abbr",start_month_abbr)
+                print("start_week",start_week)
+                print("year",year)
+                print("weeks_to_add",weeks_to_add)
+                # Convert the abbreviated month to its numeric equivalent
+                if start_month_abbr not in month_map:
+                    return None,None
+            
+                start_month = month_map[start_month_abbr]
+            
+                # Define the start date as the first day of the given month and year
+                start_date = datetime(year, start_month, 1)
+            
+                # Calculate the date corresponding to the given week in the start month
+                days_to_start_week = (start_week - 1) * 7
+                start_week_date = start_date + timedelta(days=days_to_start_week)
+            
+                # Add the specified number of weeks (convert weeks to days)
+                target_date = start_week_date + timedelta(weeks=weeks_to_add)
+            
+                # Determine the target month and week
+                target_month = target_date.month
+                target_year = target_date.year
+            
+                # Find the week number relative to the month (using Sunday to Saturday week structure)
+                first_day_of_target_month = datetime(target_year, target_month, 1)
+                days_difference = (target_date - first_day_of_target_month).days
+                target_week = days_difference // 7 + 1
+            
+                # Convert the month number to its abbreviation
+                target_month_abbr = target_date.strftime("%b")
+             
+                return target_month_abbr,target_week
+        
+            year = 2025               # Year
+            weeks_to_add = 4          # Add 4 weeks
+            
+            forecast_month_abbr = convert_month_to_abbr(forecast_month)
+            # Calculate and print the result
+            target_month_abbr, target_week = calculate_week_and_month(forecast_month_abbr, week_of_forecast_month, year, weeks_to_add)
+            print("next_month_holiday_check_week",target_month_abbr,target_week)
+
+            def check_holiday(target_month_abbr, target_week):
+                holidays = [
+                    {'Holiday': 'valentine_day', 'Month': 'Feb', 'Day': 14, 'Week': 2},
+                    {'Holiday': 'women_day', 'Month': 'Mar', 'Day': 8, 'Week': 2},
+                    {'Holiday': 'father_day', 'Month': 'Jun', 'Day': 16, 'Week': 3},
+                    {'Holiday': 'men_day', 'Month': 'Nov', 'Day': 19, 'Week': 3}
+                ]
+
+                df_holidays = pd.DataFrame(holidays)
+                
+                # Filter the dataframe based on the target month and week
+                result = df_holidays[(df_holidays['Month'] == target_month_abbr) & (df_holidays['Week'] == target_week)]
+                
+                if not result.empty:
+                    return result.iloc[0]['Holiday'],True
+                else:
+                    return None,False
+                
+
+            holiday_name,check_is_holiday = check_holiday(target_month_abbr, target_week)
+            print(f"The holiday in {target_month_abbr} week {target_week} is: {holiday_name}")
+            first_forecast_month = forecast_months_upper[0]
+            if check_is_holiday:
+                
+                
+                if category == "Men's" and holiday_name in ["father_day", "men_day"]:
+                    planned_shp[first_forecast_month] += (required_quantity_month_dict[first_forecast_month] * 1.15)
+                    total_gross_projection_added += (required_quantity_month_dict[first_forecast_month] * 1.15)
+                elif category != "Men's" and holiday_name not in ["father_day", "men_day"]:
+                    planned_shp[first_forecast_month] += (required_quantity_month_dict[first_forecast_month] * 1.15)
+                    total_gross_projection_added += (required_quantity_month_dict[first_forecast_month] * 1.15)
+
+
+
+            if total_gross_projection_added < Min_order:
+                planned_shp[first_forecast_month] = Min_order
+
+            print("Min_order", Min_order)
+            print("total_gross_projection",total_gross_projection_added)
+            # Print final values for verification
+            print('planned_fc',planned_fc)
+            print("Final planned_oh:", plan_oh)
+            print("Final gross_projection:", planned_shp)
+
+            
             planned_shipments = planned_shp
             macys_proj_receipt=[Macys_Proj_Receipts_Feb,Macys_Proj_Receipts_Mar,Macys_Proj_Receipts_Apr,Macys_Proj_Receipts_May,Macys_Proj_Receipts_Jun,Macys_Proj_Receipts_Jul,Macys_Proj_Receipts_Aug,Macys_Proj_Receipts_Sep,Macys_Proj_Receipts_oct,Macys_Proj_Receipts_Nov,Macys_Proj_Receipts_Dec,Macys_Proj_Receipts_Jan]
             macys_proj_receipt={key:macys_proj_receipt[i] for i,key in enumerate(retail_months_upper)}

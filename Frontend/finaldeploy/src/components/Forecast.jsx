@@ -148,8 +148,8 @@ for (let [key, value] of formData.entries()) {
   };
 
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+     "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December", "January",
   ];
 
   const styles = {

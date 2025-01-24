@@ -169,9 +169,9 @@ function FileUpload() {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
-      if (!outputFileName) {
-        setOutputFileName(selectedFile.name.split('.')[0]);
-      }
+      // if (!outputFileName) {
+      //   setOutputFileName(selectedFile.name.split('.')[0]);
+      // }
     }
   };
 
