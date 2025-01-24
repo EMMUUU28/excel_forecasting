@@ -72,7 +72,7 @@ def upload_xlsx(request):
             # Return the processed file as a response
             return JsonResponse({'file_path': f'{settings.MEDIA_URL}processed_files/{output_filename}.xlsx'}, status=200)
 
-       
+
         return JsonResponse({'error': 'No file uploaded'}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
@@ -206,12 +206,10 @@ def download_images(INPUT_EXCEL_FILE):
                 break
         else:
             print(f"No image found for item {item_name} in row {row_idx}")
-    
-
-    
+      
     source_wb.close()
     
-      
+    
 def add_data_to_sheet(INPUT_EXCEL_FILE, OUTPUT_EXCEL_FILE):
 
     metal_df1 = pd.read_excel(INPUT_EXCEL_FILE, sheet_name=METAL_COMPONENTS_SHEET)
@@ -262,19 +260,18 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     light_blue_fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")  
 
     column_names = [
-        "IMAGE", "STYLE #", "DESCRIPTION", "Quote / Build #", "Support Comment", "Sales Comment", 
-        "Merchant\nComment", "Overview\nComment", "Product\nPlacement", "Item Status\nCode", 
-        "Manufacturer\nCode", "COO", "METAL", "WEIGHT", "Metal\nCost Per\nGram", "METAL\nCOST", 
-        "STONE\nTYPE", "QTY", "SHAPE", "Color\nMM Size", "Weight", "WGHT EXT", "DIA CTTW", 
-        "CODE", "Quality", "DIA PPC/\nGEM PP Stone", "COST","IH COST\nOR NOT\n(YES/NO)", "TOTAL\nCS\nCOST", "CS\nIH\nCOST",
-        "TOTAL\nDIA\nCOST", "DIA\nIH\nCOST","TTL\nSTONE\nCOST","STONE\nIH\nCOST", "SETTING\nCOST", "EXT\nSETTING\nCOST", 
-        "SETTING\nTYPE", "SETTING\nDESCRIPTION","LABOR TYPE", "LABOR\nQTY", "LABOR\nDTL\nCOST","Labour IH COST\nOR NOT\n(YES/NO)", 
-        "LABOR\nTTL\nCOST", "LABOR\nIH\nCOST", "FINDING\nTYPE","FINDING\nCERT\n(YES/NO)", "FINDING\nQTY", "FINDING\nDTL\nCOST", "FINDING IH COST\nOR NOT\n(YES/NO)",
-        "FINDING\nTTL\nCOST","FINDING\nIH COST","FINDING\nCERT COST", "STYLE\nTOTAL","STYLE\nTOTAL\nEXCL.IH", "2% S/H", "6% DUTY", "Tariff", 
-        "LANDED\nTOTAL", "BOM\nComplete", "Box", "Cert", "Packaging\nTTL", "Target\nGM%", "Sell_1", 
+        "IMAGE", "STYLE #", "DESCRIPTION", "Mnf.\nPolicy", "Item\nStatus\nCode",
+        "Manf.\nCode", "COO", "METAL", "Wt.", "Metal\nCost\n /Gm", "METAL\nCOST", 
+        "STONE\nTYPE", "QTY", "SHAPE", "Color\nMM\nSize", "wt.", "WT.\n Ext.", "DIA CTTW", 
+        "CODE", "Quality", "$ PER \nCT/PC", "COST","IH\n (YES/NO)", "TOTAL\nCS\nCOST", "CS\nIH\nCOST",
+        "TOTAL\nDIA\nCOST", "DIA\nIH\nCOST","TOTAL\nSTONE\nCOST","STONE\nIH\nCOST", "SET\nCOST", "EXT\nSET\nCOST", 
+         "SETTING\nDESCRIPTION","LABOR TYPE", "LABOR\nQTY", "LABOR\nDTL\nCOST","Labour IH COST\nOR NOT\n(YES/NO)", 
+        "LABOR\nTTL\nCOST", "LABOR\nIH\nCOST", "FINDING\nTYPE","FINDING\n(YES/NO)", "FINDING\nQTY", "FINDING\nDTL\nCOST", "FINDING IH COST\nOR NOT\n(YES/NO)",
+        "FINDING\nTTL\nCOST","FINDING\nIH COST", "STYLE\nTOTAL","STYLE\nTOTAL\nEXCL.IH", "S/H", "Duty $", "Duty %", 
+        "LANDED\nTOTAL", "Box", "Cert", "Target\nGM%", "Sell_1", 
         "Gross\nMargin_1", "Net\nSell_1", "Net\nMargin_1", "MSRP_1", "IMU_1", "AUR_1", "AUR\nDiscount_1", 
         "AUR\nGM%_1", "1st MKD_1", "MKD NM%_1", "Sell_2", "Gross\nMargin_2", "Net\nSell_2", "Net Margin_2", 
-        "MSRP_2", "IMU_2", "AUR_2", "AUR\nDiscount_2", "AUR\nGM%_2", "1st MKD_2", "MKD NM%_2"
+        "MSRP_2", "IMU_2", "AUR_2", "AUR\nDiscount_2", "AUR\nGM%_2", "1st MKD_2", "MKD NM%_2","Support Comment"
     ]
     
     op_li=SETTING_CODE
@@ -305,7 +302,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                     bottom=Side(style='thin'))
     
 
-    
+
     # Add subheaders
     ws[f"{column_dict['IMAGE']}7"] = "Customer Name:"
     ws[f"{column_dict['IMAGE']}7"].font = subheader_bold
@@ -320,7 +317,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     ws[f"{column_dict['DESCRIPTION']}7"].alignment = alignment_left
     
     # Add data rows and format them as needed
-    ws[f"{column_dict['IMAGE']}8"] = "Date Requested:"
+    ws[f"{column_dict['IMAGE']}8"] = "Date of Extract:"
     ws[f"{column_dict['IMAGE']}8"].font = subheader_bold
     ws[f"{column_dict['IMAGE']}8"].alignment = alignment_left
     
@@ -330,35 +327,35 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     ws[f"{column_dict['IMAGE']}9"].alignment = alignment_left
     
     # Add specific data from O1 to P1 and O3 to P3
-    ws[column_dict['Metal\nCost Per\nGram'] + "1"] = "S"
-    ws[column_dict['Metal\nCost Per\nGram'] + "2"] = "GOS"
+    ws[column_dict['Metal\nCost\n /Gm'] + "1"] = "S"
+    ws[column_dict['Metal\nCost\n /Gm'] + "2"] = "GOS"
 
-    ws[column_dict['Metal\nCost Per\nGram'] + "1"].font = subheader_bold
-    ws[column_dict['Metal\nCost Per\nGram'] + "2"].font = subheader_bold
-    ws[column_dict['Metal\nCost Per\nGram'] + "1"].alignment = alignment_left
-    ws[column_dict['Metal\nCost Per\nGram'] + "2"].alignment = alignment_left
-    ws[column_dict['Metal\nCost Per\nGram'] + "1"].border = border
-    ws[column_dict['Metal\nCost Per\nGram'] + "2"].border = border
+    ws[column_dict['Metal\nCost\n /Gm'] + "1"].font = subheader_bold
+    ws[column_dict['Metal\nCost\n /Gm'] + "2"].font = subheader_bold
+    ws[column_dict['Metal\nCost\n /Gm'] + "1"].alignment = alignment_left
+    ws[column_dict['Metal\nCost\n /Gm'] + "2"].alignment = alignment_left
+    ws[column_dict['Metal\nCost\n /Gm'] + "1"].border = border
+    ws[column_dict['Metal\nCost\n /Gm'] + "2"].border = border
 
-    ws[column_dict['Metal\nCost Per\nGram'] + "3"] = "10"
-    ws[column_dict['Metal\nCost Per\nGram'] + "4"] = "14"
+    ws[column_dict['Metal\nCost\n /Gm'] + "3"] = "10"
+    ws[column_dict['Metal\nCost\n /Gm'] + "4"] = "14"
 
-    ws[column_dict['Metal\nCost Per\nGram'] + "3"].font = subheader_bold
-    ws[column_dict['Metal\nCost Per\nGram'] + "4"].font = subheader_bold
-    ws[column_dict['Metal\nCost Per\nGram'] + "3"].alignment = alignment_left
-    ws[column_dict['Metal\nCost Per\nGram'] + "4"].alignment = alignment_left
-    ws[column_dict['Metal\nCost Per\nGram'] + "3"].border = border
-    ws[column_dict['Metal\nCost Per\nGram'] + "4"].border = border
+    ws[column_dict['Metal\nCost\n /Gm'] + "3"].font = subheader_bold
+    ws[column_dict['Metal\nCost\n /Gm'] + "4"].font = subheader_bold
+    ws[column_dict['Metal\nCost\n /Gm'] + "3"].alignment = alignment_left
+    ws[column_dict['Metal\nCost\n /Gm'] + "4"].alignment = alignment_left
+    ws[column_dict['Metal\nCost\n /Gm'] + "3"].border = border
+    ws[column_dict['Metal\nCost\n /Gm'] + "4"].border = border
 
-    ws[column_dict['Metal\nCost Per\nGram'] + "7"] = "S"
-    ws[column_dict['Metal\nCost Per\nGram'] + "8"] = "GOLD"
+    ws[column_dict['Metal\nCost\n /Gm'] + "7"] = "S"
+    ws[column_dict['Metal\nCost\n /Gm'] + "8"] = "GOLD"
 
-    ws[column_dict['Metal\nCost Per\nGram'] + "7"].font = subheader_bold
-    ws[column_dict['Metal\nCost Per\nGram'] + "8"].font = subheader_bold
-    ws[column_dict['Metal\nCost Per\nGram'] + "7"].alignment = alignment_left
-    ws[column_dict['Metal\nCost Per\nGram'] + "8"].alignment = alignment_left
-    ws[column_dict['Metal\nCost Per\nGram'] + "7"].border = border
-    ws[column_dict['Metal\nCost Per\nGram'] + "8"].border = border
+    ws[column_dict['Metal\nCost\n /Gm'] + "7"].font = subheader_bold
+    ws[column_dict['Metal\nCost\n /Gm'] + "8"].font = subheader_bold
+    ws[column_dict['Metal\nCost\n /Gm'] + "7"].alignment = alignment_left
+    ws[column_dict['Metal\nCost\n /Gm'] + "8"].alignment = alignment_left
+    ws[column_dict['Metal\nCost\n /Gm'] + "7"].border = border
+    ws[column_dict['Metal\nCost\n /Gm'] + "8"].border = border
 
     # Update your formulas using string concatenation
     ws[column_dict['METAL\nCOST'] + "1"] = '=ROUND($' + column_dict['METAL\nCOST'] + '$7/31.1035*0.925*1.2, 2)'
@@ -456,8 +453,9 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
             # Check if the image file exists
             if os.path.exists(image_path):
                 img = Image(image_path)
-                img.width, img.height = 150, 150
-                # Add image using the column for "IMAGE" from the column_dict
+                img.width, img.height = int(2.54 * 37.79527559), int(1.62 * 37.79527559)
+     # Add image using the column for "IMAGE" from the column_dict
+                
                 ws.add_image(img, column_dict["IMAGE"] + str(r))
                 print(f"Added image for item {original_item_name} at {column_dict['IMAGE']}{r}")
             else:
@@ -468,22 +466,21 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         # Mapping the data to the worksheet using column_dict
         ws[column_dict["STYLE #"] + str(r)] = single_df["Itemno"].iloc[i]
         ws[column_dict["DESCRIPTION"] + str(r)] = single_df["dbo_NAV_Item_Master.Description"].iloc[i]
-        ws[column_dict["Item Status\nCode"] + str(r)] = single_df["Item Status Code"].iloc[i]
-        ws[column_dict["Manufacturer\nCode"] + str(r)] = single_df["Vendor No_"].iloc[i]
+        ws[column_dict["Item\nStatus\nCode"] + str(r)] = single_df["Item Status Code"].iloc[i]
+        ws[column_dict["Manf.\nCode"] + str(r)] = single_df["Vendor No_"].iloc[i]
         ws[column_dict["COO"] + str(r)] = single_df["Country Of Origin Code"].iloc[i]
         ws[column_dict["METAL"] + str(r)] = str(single_df["Metal Quality Code"].iloc[i])
-        ws[column_dict["WEIGHT"] + str(r)] = single_df["Fin Metal weight"].iloc[i]
+        ws[column_dict["Wt."] + str(r)] = single_df["Fin Metal weight"].iloc[i]
         
         # Formula for Metal Cost Per Gram using dynamic column and row reference
-        ws[column_dict["Metal\nCost Per\nGram"]+str(r)]='=IFERROR(VLOOKUP(M' + str(r) + '&"", $O$1:$P$4, 2, 0), "")'
+        ws[column_dict["Metal\nCost\n /Gm"]+str(r)]='=IFERROR(VLOOKUP(' + column_dict["METAL"] + str(r) + '&"", ' + column_dict["Metal\nCost\n /Gm"] + '$1:' + column_dict["METAL\nCOST"] + '$4, 2, 0), "")'
+        # Formula for Metal Cost (wt. * Metal Cost Per Gram)
+        ws[column_dict["METAL\nCOST"] + str(r)] = "=ROUND(" + column_dict["Wt."] + str(r) + "*" + column_dict["Metal\nCost\n /Gm"] + str(r) + ", 2)"
 
-        # Formula for Metal Cost (Weight * Metal Cost Per Gram)
-        ws[column_dict["METAL\nCOST"] + str(r)] = "=" + column_dict["WEIGHT"] + str(r) + "*" + column_dict["Metal\nCost Per\nGram"] + str(r)
         
         # Set the current row for further reference
         c_r = r
         fin_c = r
-
         # Filter the metal_df for the current item and add 'inhouse_or_not' based on the 'Supply Policy'
         df_i = metal_df[metal_df.Itemno == single_df["Itemno"].iloc[i]]
         df_i['inhouse_or_not'] = ['YES' if policy == 'IH Assembly' else 'NO' for policy in df_i['Supply Policy']]
@@ -494,21 +491,20 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                 ws[column_dict["STONE\nTYPE"] + str(c_r)] = row['Item Category Code']
                 ws[column_dict["QTY"] + str(c_r)] = row['AvgOfQuantity']
                 s_q.append(row['AvgOfQuantity'])
-                ws[column_dict["Weight"] + str(c_r)] = row['AvgOfWeight']
+                ws[column_dict["wt."] + str(c_r)] = row['AvgOfWeight']
                 ws[column_dict["CODE"] + str(c_r)] = row['Item No_']   
-                ws[column_dict["DIA PPC/\nGEM PP Stone"] + str(c_r)] = row['AvgOfBase Unit Cost (LCY)']
+                ws[column_dict["$ PER \nCT/PC"] + str(c_r)] = row['AvgOfBase Unit Cost (LCY)']
 
                 try:
                     ws[column_dict["SHAPE"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["SHAPE"].iloc[0]
                     ws[column_dict["Quality"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["QUALITY"].iloc[0]
-                    ws[column_dict["Color\nMM Size"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["MM SIZE"].iloc[0]
+                    ws[column_dict["Color\nMM\nSize"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["MM SIZE"].iloc[0]
                 except:
                     pass
 
-                ws[column_dict["WGHT EXT"] + str(c_r)] = "=" + column_dict["Weight"] + str(c_r) + "*" + column_dict["QTY"] + str(c_r)
-                ws[column_dict["COST"] + str(c_r)] = "=" + column_dict["DIA PPC/\nGEM PP Stone"] + str(c_r) + "*" + column_dict["WGHT EXT"] + str(c_r)
-                ws[column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(c_r)] = row["inhouse_or_not"]
-                ws[column_dict["SETTING\nTYPE"] + str(c_r)] = row['Setting Type Code']
+                ws[column_dict["WT.\n Ext."] + str(c_r)] = "=" + column_dict["wt."] + str(c_r) + "*" + column_dict["QTY"] + str(c_r)
+                ws[column_dict["COST"] + str(c_r)] = "=" + column_dict["$ PER \nCT/PC"] + str(c_r) + "*" + column_dict["WT.\n Ext."] + str(c_r)
+                ws[column_dict["IH\n (YES/NO)"] + str(c_r)] = row["inhouse_or_not"]
                 if SETTING_DESC.get(row['Setting Type Code']):
                     ws[column_dict["SETTING\nDESCRIPTION"]+str(c_r)]=SETTING_DESC.get(row['Setting Type Code'])
                 else:
@@ -522,7 +518,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                 ws[column_dict["FINDING IH COST\nOR NOT\n(YES/NO)"] + str(fin_c)] = row["inhouse_or_not"]
                 ws[column_dict["FINDING\nTYPE"] + str(fin_c)] = row['Item No_']
                 
-                ws[column_dict["FINDING\nCERT\n(YES/NO)"] + str(fin_c)]='=IF(ISNUMBER(SEARCH("CERT", ' + column_dict["FINDING\nTYPE"] + str(fin_c) + ')), "YES", "NO")'
+                ws[column_dict["FINDING\n(YES/NO)"] + str(fin_c)]='=IF(ISNUMBER(SEARCH("CERT", ' + column_dict["FINDING\nTYPE"] + str(fin_c) + ')), "YES", "NO")'
                 ws[column_dict["FINDING\nQTY"] + str(fin_c)] = row['AvgOfQuantity']
             
 # ( "=IF("+ column_dict["METAL"] + str(r) + '="S", '  # Check if the Metal column value is "S"
@@ -539,21 +535,20 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                 ws[column_dict["STONE\nTYPE"] + str(c_r)] = row['Item Category Code']
                 ws[column_dict["QTY"] + str(c_r)] = row['AvgOfQuantity']
                 s_q.append(row['AvgOfQuantity'])
-                ws[column_dict["Weight"] + str(c_r)] = row['AvgOfWeight']
+                ws[column_dict["wt."] + str(c_r)] = row['AvgOfWeight']
                 ws[column_dict["CODE"] + str(c_r)] = row['Item No_']
-                ws[column_dict["DIA PPC/\nGEM PP Stone"] + str(c_r)] = row['AvgOfBase Unit Cost (LCY)']
+                ws[column_dict["$ PER \nCT/PC"] + str(c_r)] = row['AvgOfBase Unit Cost (LCY)']
 
                 try:
                     ws[column_dict["SHAPE"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["SHAPE"].iloc[0]
                     ws[column_dict["Quality"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["QUALITY"].iloc[0]
-                    ws[column_dict["Color\nMM Size"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["MM SIZE"].iloc[0]
+                    ws[column_dict["Color\nMM\nSize"] + str(c_r)] = shape_qty_df[shape_qty_df["Item No_"] == row['Item No_']]["MM SIZE"].iloc[0]
                 except:
                     pass
                 
-                ws[column_dict["WGHT EXT"] + str(c_r)] = "=" + column_dict["Weight"] + str(c_r) + "*" + column_dict["QTY"] + str(c_r)
+                ws[column_dict["WT.\n Ext."] + str(c_r)] = "=" + column_dict["wt."] + str(c_r) + "*" + column_dict["QTY"] + str(c_r)
                 ws[column_dict["COST"] + str(c_r)] = row['AvgOfCost Amount (LCY)']
-                ws[column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(c_r)] = row["inhouse_or_not"]
-                ws[column_dict["SETTING\nTYPE"] + str(c_r)] = row['Setting Type Code']
+                ws[column_dict["IH\n (YES/NO)"] + str(c_r)] = row["inhouse_or_not"]
                 if SETTING_DESC.get(row['Setting Type Code']):
                     
                     ws[column_dict["SETTING\nDESCRIPTION"]+str(c_r)]=SETTING_DESC.get(row['Setting Type Code'])
@@ -570,11 +565,9 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     "=SUMIF("
     + column_dict["STONE\nTYPE"] + str(r) + ":" + column_dict["STONE\nTYPE"] + str(c_r)  # Condition range
     + ',"DIAM",'  # Criteria: "diam"
-    + column_dict["WGHT EXT"] + str(r) + ":" + column_dict["WGHT EXT"] + str(c_r)  # Sum range
+    + column_dict["WT.\n Ext."] + str(r) + ":" + column_dict["WT.\n Ext."] + str(c_r)  # Sum range
     + ")"
 )
-
-
         
         # TOTAL CS COST
         ws[column_dict["TOTAL\nCS\nCOST"] + str(r)] = (
@@ -584,8 +577,8 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
 
         # CS IH COST
         ws[column_dict["CS\nIH\nCOST"] + str(r)] = (
-            "=SUMIFS(" + column_dict["COST"] + str(r) + ":" + column_dict["COST"] + str(c_r) + ", " + column_dict["STONE\nTYPE"] + str(r) + ":" + column_dict["STONE\nTYPE"] + str(c_r) + ', "COLOR", ' + column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(r) + ":" + column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(c_r) + ', "YES") '
-            "+ SUMIFS(" + column_dict["COST"] + str(r) + ":" + column_dict["COST"] + str(c_r) + ", " + column_dict["STONE\nTYPE"] + str(r) + ":" + column_dict["STONE\nTYPE"] + str(c_r) + ', "CZ", ' + column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(r) + ":" + column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(c_r) + ', "YES")'
+            "=SUMIFS(" + column_dict["COST"] + str(r) + ":" + column_dict["COST"] + str(c_r) + ", " + column_dict["STONE\nTYPE"] + str(r) + ":" + column_dict["STONE\nTYPE"] + str(c_r) + ', "COLOR", ' + column_dict["IH\n (YES/NO)"] + str(r) + ":" + column_dict["IH\n (YES/NO)"] + str(c_r) + ', "YES") '
+            "+ SUMIFS(" + column_dict["COST"] + str(r) + ":" + column_dict["COST"] + str(c_r) + ", " + column_dict["STONE\nTYPE"] + str(r) + ":" + column_dict["STONE\nTYPE"] + str(c_r) + ', "CZ", ' + column_dict["IH\n (YES/NO)"] + str(r) + ":" + column_dict["IH\n (YES/NO)"] + str(c_r) + ', "YES")'
         )
 
         # TOTAL DIA COST
@@ -593,11 +586,11 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
 
         # DIA IH COST
         ws[column_dict["DIA\nIH\nCOST"] + str(r)] = (
-            "=SUMIFS(" + column_dict["COST"] + str(r) + ":" + column_dict["COST"] + str(c_r) + ", " + column_dict["STONE\nTYPE"] + str(r) + ":" + column_dict["STONE\nTYPE"] + str(c_r) + ', "DIAM", ' + column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(r) + ":" + column_dict["IH COST\nOR NOT\n(YES/NO)"] + str(c_r) + ', "YES")'
+            "=SUMIFS(" + column_dict["COST"] + str(r) + ":" + column_dict["COST"] + str(c_r) + ", " + column_dict["STONE\nTYPE"] + str(r) + ":" + column_dict["STONE\nTYPE"] + str(c_r) + ', "DIAM", ' + column_dict["IH\n (YES/NO)"] + str(r) + ":" + column_dict["IH\n (YES/NO)"] + str(c_r) + ', "YES")'
         )
 
         # TTL STONE COST
-        ws[column_dict["TTL\nSTONE\nCOST"] + str(r)] = "=SUM(" + column_dict["TOTAL\nCS\nCOST"] + str(r) + "," + column_dict["TOTAL\nDIA\nCOST"] + str(r) + ")"
+        ws[column_dict["TOTAL\nSTONE\nCOST"] + str(r)] = "=SUM(" + column_dict["TOTAL\nCS\nCOST"] + str(r) + "," + column_dict["TOTAL\nDIA\nCOST"] + str(r) + ")"
 
         # STONE IH COST
         ws[column_dict["STONE\nIH\nCOST"] + str(r)] = "=SUM(" + column_dict["CS\nIH\nCOST"] + str(r) + "," + column_dict["DIA\nIH\nCOST"] + str(r) + ")"
@@ -608,7 +601,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ll=labour_df[(labour_df.Quantity!=0)&(labour_df.Itemno==single_df["Itemno"].iloc[i])&(labour_df["Unit Cost (LCY)"]!=0)&(labour_df.visited==0)]
         
         # ll[(ll["Quantity"]==1) & (ll["Operation Code"]=="SET")][:1]
-        # ws[["SETTING\nCOST"]+str(r)]
+        # ws[["SET\nCOST"]+str(r)]
         l_c=r
         count_s=0
     
@@ -619,14 +612,13 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
             ll.loc[ll[(ll["Quantity"]==q) &((ll["Operation Code"]=="SET")|(ll["Operation Code"].isin(op_li)) ) &(ll.visited!=1)][:1].index, 'visited']=1
             pick_df=pick_df[pick_df["Unit Cost (LCY)"]>0]
             if len(pick_df)>0:
-                ws[column_dict["SETTING\nCOST"]+str(l_c)]=pick_df["Unit Cost (LCY)"].iloc[0]
-                ws[column_dict["SETTING\nCOST"]+str(l_c)].number_format = numbers.FORMAT_CURRENCY_USD_SIMPLE
-                ws[column_dict["EXT\nSETTING\nCOST"] + str(l_c)] = '=' + column_dict["SETTING\nCOST"] + str(l_c) + '*' + column_dict["QTY"] + str(l_c)
+                ws[column_dict["SET\nCOST"]+str(l_c)]=pick_df["Unit Cost (LCY)"].iloc[0]
+                ws[column_dict["SET\nCOST"]+str(l_c)].number_format = numbers.FORMAT_CURRENCY_USD_SIMPLE
+                ws[column_dict["EXT\nSET\nCOST"] + str(l_c)] = '=' + column_dict["SET\nCOST"] + str(l_c) + '*' + column_dict["QTY"] + str(l_c)
 
-                ws[column_dict["EXT\nSETTING\nCOST"]+str(l_c)].number_format = numbers.FORMAT_CURRENCY_USD_SIMPLE
+                ws[column_dict["EXT\nSET\nCOST"]+str(l_c)].number_format = numbers.FORMAT_CURRENCY_USD_SIMPLE
                 count_s=count_s+1
                 if len(next_df)>0:
-                    ws[column_dict["SETTING\nTYPE"]+str(l_c)]=SETTING_TYPE_DIC[next_df['Operation Code'].iloc[0]]
                     if SETTING_DESC.get(SETTING_TYPE_DIC[next_df['Operation Code'].iloc[0]]):
                         ws[column_dict["SETTING\nDESCRIPTION"]+str(l_c)]=SETTING_DESC.get(SETTING_TYPE_DIC[next_df['Operation Code'].iloc[0]])
                     else:
@@ -634,7 +626,6 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                                         
                 
             else:
-                ws[column_dict["SETTING\nTYPE"]+str(l_c)]=None
                 ws[column_dict["SETTING\nDESCRIPTION"]+str(l_c)]=None
                 
             
@@ -650,7 +641,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
             ws[column_dict["LABOR\nQTY"] + str(labour_c)] = '=SUM(' + column_dict["QTY"] + str(r) + ':' + column_dict["QTY"] + str(l_c) + ')'
 
             # LABOR DTL COST (summing the EXT SETTING COST column)
-            ws[column_dict["LABOR\nDTL\nCOST"] + str(labour_c)] = '=SUM(' + column_dict["EXT\nSETTING\nCOST"] + str(r) + ':' + column_dict["EXT\nSETTING\nCOST"] + str(l_c) + ')'
+            ws[column_dict["LABOR\nDTL\nCOST"] + str(labour_c)] = '=SUM(' + column_dict["EXT\nSET\nCOST"] + str(r) + ':' + column_dict["EXT\nSET\nCOST"] + str(l_c) + ')'
 
             
             labour_c=labour_c+1
@@ -670,20 +661,20 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["LABOR\nIH\nCOST"] + str(r)]="=SUMIF(" + column_dict["Labour IH COST\nOR NOT\n(YES/NO)"] + str(r) + ":" + column_dict["Labour IH COST\nOR NOT\n(YES/NO)"] + str(labour_c) + ',"YES",' + column_dict['LABOR\nDTL\nCOST'] + str(r) + ":" + column_dict['LABOR\nDTL\nCOST'] + str(labour_c) + ")"
         ws[column_dict["FINDING\nTTL\nCOST"] + str(r)] = '=SUM(' + column_dict["FINDING\nDTL\nCOST"] + str(r) + ':' + column_dict["FINDING\nDTL\nCOST"] + str(fin_c) + ')'
         ws[column_dict["FINDING\nIH COST"]+ str(r)]="=SUMIF(" + column_dict["FINDING IH COST\nOR NOT\n(YES/NO)"] + str(r) + ":" + column_dict["FINDING IH COST\nOR NOT\n(YES/NO)"] + str(fin_c) + ',"YES",' + column_dict["FINDING\nDTL\nCOST"] + str(r) + ":" + column_dict["FINDING\nDTL\nCOST"] + str(fin_c) + ")"
-        ws[column_dict["FINDING\nCERT COST"]+str(r)]="=SUMIF(" + column_dict["FINDING\nCERT\n(YES/NO)"] + str(r) + ":" + column_dict["FINDING\nCERT\n(YES/NO)"] + str(fin_c) + ',"YES",' + column_dict["FINDING\nDTL\nCOST"] + str(r) + ":" + column_dict["FINDING\nDTL\nCOST"] + str(fin_c) + ")"
+        # ws[column_dict["FINDING\nCERT COST"]+str(r)]="=SUMIF(" + column_dict["FINDING\n(YES/NO)"] + str(r) + ":" + column_dict["FINDING\n(YES/NO)"] + str(fin_c) + ',"YES",' + column_dict["FINDING\nDTL\nCOST"] + str(r) + ":" + column_dict["FINDING\nDTL\nCOST"] + str(fin_c) + ")"
         # ws[column_dict["STYLE\nTOTAL"] + str(r)] = ('=SUM(' + column_dict["METAL\nCOST"] + str(r) + ':' + column_dict["METAL\nCOST"] + str(labour_c) + ',' +column_dict["TOTAL\nCS\nCOST"] + str(r) + ',' + column_dict["CS\nIH\nCOST"] + str(r) + ',' + column_dict["TOTAL\nDIA\nCOST"] + str(r) + ',' + column_dict["LABOR\nTTL\nCOST"] + str(r) + ',' + column_dict["FINDING\nTTL\nCOST"] + str(r) + ')')+"-"+column_dict["FINDING\nCERT COST"] + str(r)
         # ws[column_dict["STYLE\nTOTAL\nEXCL.IH"]+ str(r)]="="+column_dict["STYLE\nTOTAL"] + str(r)+"-"+column_dict["FINDING\nIH COST"]+ str(r)+"-"+column_dict["LABOR\nIH\nCOST"]+ str(r)+"-"+column_dict["DIA\nIH\nCOST"]+ str(r)+"-"+column_dict["CS\nIH\nCOST"]+ str(r)
         
 
-        # ws[column_dict["2% S/H"] + str(r)] = '=' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*0.02'
-        # ws[column_dict["6% DUTY"] + str(r)] = '=' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*0.06'
+        # ws[column_dict["S/H"] + str(r)] = '=' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*0.02'
+        # ws[column_dict["Duty $"] + str(r)] = '=' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*0.06'
 
                 # STYLE TOTAL
         ws[column_dict["STYLE\nTOTAL"] + str(r)] = (
             '=ROUND(SUM(' + column_dict["METAL\nCOST"] + str(r) + ':' + column_dict["METAL\nCOST"] + str(labour_c) + ',' 
             + column_dict["TOTAL\nCS\nCOST"] + str(r) + ',' + column_dict["CS\nIH\nCOST"] + str(r) + ',' 
             + column_dict["TOTAL\nDIA\nCOST"] + str(r) + ',' + column_dict["LABOR\nTTL\nCOST"] + str(r) + ',' 
-            + column_dict["FINDING\nTTL\nCOST"] + str(r) + '), 2) - ' + 'ROUND(' + column_dict["FINDING\nCERT COST"] + str(r) + ', 2)'
+            + column_dict["FINDING\nTTL\nCOST"] + str(r) + '), 2)'
         )
         
         # STYLE TOTAL EXCL. IH
@@ -693,29 +684,28 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
             'ROUND(' + column_dict["CS\nIH\nCOST"] + str(r) + ', 2)'
         )
         
-        # 2% S/H
-        ws[column_dict["2% S/H"] + str(r)] = (
+        # S/H
+        ws[column_dict["S/H"] + str(r)] = (
             '=ROUND(' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*0.02, 2)'
         )
         
-        # 6% DUTY
-        ws[column_dict["6% DUTY"] + str(r)] = (
-            '=ROUND(' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*0.06, 2)'
+        # Duty $
+        ws[column_dict["Duty $"] + str(r)] = (
+            '=ROUND(' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*' + column_dict["Duty %"] + str(r) + ', 2)'
         )
+
 
 
     
 
         
-        ws[column_dict["Tariff"] + str(r)] = None
-        ws[column_dict["LANDED\nTOTAL"] + str(r)] = ('=SUM(' + column_dict["STYLE\nTOTAL"] + str(r) + ',' +    column_dict["2% S/H"] + str(r) + ',' +   column_dict["6% DUTY"] + str(r) + ',' +   column_dict["Tariff"] + str(r) + ')')
+        ws[column_dict["Duty %"] + str(r)] = None
+        ws[column_dict["LANDED\nTOTAL"] + str(r)] = ('=SUM(' + column_dict["STYLE\nTOTAL"] + str(r) + ',' +    column_dict["S/H"] + str(r) + ',' +   column_dict["Duty $"] + str(r) + ',' +   column_dict["Duty %"] + str(r) + ')')
 
         # ws[column_dict["LANDED\nTOTAL"] + str(r)].number_format = numbers.FORMAT_CURRENCY_USD_SIMPLE
 
-        ws[column_dict["BOM\nComplete"] + str(r)] = "No"
         ws[column_dict["Box"] + str(r)] = '=$' + column_dict["Box"] + '$8'
         ws[column_dict["Cert"] + str(r)] = '=$' + column_dict["Cert"] + '$8'
-        ws[column_dict["Packaging\nTTL"] + str(r)] = ('=SUM(' + column_dict["Box"] + str(r) + ',' + column_dict["Cert"] + str(r) + ')')
 
 
         ws[column_dict["Target\nGM%"] + str(r)] = '=$' + column_dict["Target\nGM%"] + '$8'
@@ -724,7 +714,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["Gross\nMargin_1"] + str(r)] = '=(' + column_dict["Sell_1"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Sell_1"] + str(r)
         ws[column_dict["Gross\nMargin_1"] + str(r)].number_format = '0%'
 
-        ws[column_dict["Net\nSell_1"] + str(r)] = '=' + column_dict["Sell_1"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)-' + column_dict["Packaging\nTTL"] + str(r)
+        ws[column_dict["Net\nSell_1"] + str(r)] = '=' + column_dict["Sell_1"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)'
         ws[column_dict["Net\nMargin_1"] + str(r)] = '=(' + column_dict["Net\nSell_1"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Net\nSell_1"] + str(r)
         ws[column_dict["Net\nMargin_1"] + str(r)].number_format = '0.0%'
 
@@ -741,14 +731,14 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["AUR\nGM%_1"] + str(r)].number_format = '0%'
 
         ws[column_dict["1st MKD_1"] + str(r)] = '=' + column_dict["Sell_1"] + str(r) + '*(1-$' + column_dict["1st MKD_2"] + '$8)'
-        ws[column_dict["MKD NM%_1"] + str(r)] = '=(( ' + column_dict["1st MKD_1"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)-' + column_dict["Packaging\nTTL"] + str(r) + ')-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/(' + column_dict["1st MKD_1"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)-' + column_dict["Packaging\nTTL"] + str(r) + ')'
+        ws[column_dict["MKD NM%_1"] + str(r)] = '=((' + column_dict["1st MKD_1"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8))- ' + column_dict["LANDED\nTOTAL"] + str(r) + ')/(' + column_dict["1st MKD_1"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8))'
         ws[column_dict["MKD NM%_1"] + str(r)].number_format = '0%'
 
-        ws[column_dict["Sell_2"] + str(r)] = '=' + column_dict["LANDED\nTOTAL"] + str(r) + '/(1-' + column_dict["Gross\nMargin_1"] + str(r) + ')'
+        ws[column_dict["Sell_2"] + str(r)] = '=' + column_dict["LANDED\nTOTAL"] + str(r) + '/(1-$' + column_dict["Target\nGM%"] + '$8)'
         ws[column_dict["Gross\nMargin_2"] + str(r)] = '=(' + column_dict["Sell_2"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Sell_2"] + str(r)
         ws[column_dict["Gross\nMargin_2"] + str(r)].number_format = '0%'
 
-        ws[column_dict["Net\nSell_2"] + str(r)] = '=' + column_dict["Sell_2"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)-' + column_dict["Packaging\nTTL"] + str(r)
+        ws[column_dict["Net\nSell_2"] + str(r)] = '=' + column_dict["Sell_2"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)'
         ws[column_dict["Net Margin_2"] + str(r)] = '=(' + column_dict["Net\nSell_2"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Net\nSell_2"] + str(r)
         ws[column_dict["Net Margin_2"] + str(r)].number_format = '0.0%'
 
@@ -764,7 +754,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["AUR\nGM%_2"] + str(r)].number_format = '0%'
 
         ws[column_dict["1st MKD_2"] + str(r)] = '=' + column_dict["Sell_2"] + str(r) + '*(1-$' + column_dict["1st MKD_2"] + '$8)'
-        ws[column_dict["MKD NM%_2"] + str(r)] = '=(( ' + column_dict["1st MKD_2"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)-' + column_dict["Packaging\nTTL"] + str(r) + ')-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/(' + column_dict["1st MKD_2"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)-' + column_dict["Packaging\nTTL"] + str(r) + ')'
+        ws[column_dict["MKD NM%_2"] + str(r)] = '=((' + column_dict["1st MKD_2"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8))- ' + column_dict["LANDED\nTOTAL"] + str(r) + ')/(' + column_dict["1st MKD_2"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8))'
         ws[column_dict["MKD NM%_2"] + str(r)].number_format = '0%'
                 
     
@@ -799,7 +789,6 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         r= max(labour_c+1,l_c+1,r+9)
             
     
-    
     for column in ws.columns:
         
         column_letter = get_column_letter(column[0].column)
@@ -815,12 +804,13 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                     cell_width = (get_column_width(cell)-0.1)*font_size
                     
 
-    
+
                 
                 if cell_width > max_width:
                     max_width = cell_width
         
         ws.column_dimensions[column_letter].width = max_width
+
     # Save the file
     ws.column_dimensions[column_dict["METAL\nCOST"]].width = 10 + 11 * 0.08 * 2
     ws.merge_cells('A6:C6')#NTC
@@ -838,49 +828,85 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     gold_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")  # Gold color
     light_yellow_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
     
-    
     desired_width = 20  # Adjust this value as needed
-    
     # Iterate over the columns from AZ to BU and set the width
-    for col in range(ws['BJ1'].column, ws['CE1'].column + 1):
+    for col in range(ws['BJ1'].column, ws['BY1'].column + 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = min(ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width,10+11*2)#NTC
     
-    
-    
-   
-    
-    
-    ws.merge_cells(column_dict["STONE\nTYPE"]+'12:'+column_dict["STONE\nIH\nCOST"]+'12')
+    thick_side = Side(border_style="thick", color="000000")
+
+    top_border = Border(top=thick_side)
+
+    # Get the range of cells you want to apply the fill to
+    start_col = column_dict["STONE\nTYPE"]
+    end_col = column_dict["SETTING\nDESCRIPTION"]
+
+    # Assuming row 12 is to be formatted
+    start_cell = f"{start_col}12"
+    end_cell = f"{end_col}12"
+
+    # Apply the white fill to the specified range
+    for col in ws[start_cell:end_cell]:
+        for cell in col:
+            cell.fill = gray_fill
     # Dynamically assign value, font, alignment, and fill to the "STONE\nTYPE" column (which corresponds to Q)
-    ws[column_dict["STONE\nTYPE"] + '12'] = "STONE BREAKDOWN"
-    ws[column_dict["STONE\nTYPE"] + '12'].font = header_font
-    ws[column_dict["STONE\nTYPE"] + '12'].alignment = alignment_center
-    ws[column_dict["STONE\nTYPE"] + '12'].fill = gray_fill
+    ws[column_dict["Quality"] + '12'] = "STONE BREAKDOWN"
+    ws[column_dict["Quality"] + '12'].font = header_font
+    ws[column_dict["Quality"] + '12'].alignment = alignment_center
 
-    
-    
-    ws.merge_cells(column_dict["SETTING\nCOST"]+'12:'+column_dict["SETTING\nDESCRIPTION"]+'12')
-    ws[column_dict["SETTING\nCOST"] + '12'] = "SETTING BREAKDOWN"
-    ws[column_dict["SETTING\nCOST"] + '12'].font = header_font
-    ws[column_dict["SETTING\nCOST"] + '12'].alignment = alignment_center
-    ws[column_dict["SETTING\nCOST"] + '12'].fill = gray_fill
-    
-    
-    ws.merge_cells(column_dict["Sell_1"]+'12:'+column_dict["MKD NM%_1"]+'12')
-    ws[column_dict["Sell_1"] + '12'] = "DEFAULT PRICING"
-    ws[column_dict["Sell_1"] + '12'].font = header_font
-    ws[column_dict["Sell_1"] + '12'].alignment = alignment_center
-    ws[column_dict["Sell_1"] + '12'].fill = gold_fill
-    
-    ws.merge_cells(column_dict["Sell_2"]+'12:'+column_dict["MKD NM%_2"]+'12')
+    ws[column_dict["EXT\nSET\nCOST"] + '12'] = "SETTING BREAKDOWN"
+    ws[column_dict["EXT\nSET\nCOST"] + '12'].font = header_font
+    ws[column_dict["EXT\nSET\nCOST"] + '12'].alignment = alignment_center
+    for row in ws[column_dict["STONE\nTYPE"] + '12:' + column_dict["SETTING\nDESCRIPTION"] + '12']:
+        for cell in row:
+            cell.border = top_border
+    ws[column_dict["STONE\nTYPE"] + '12'].border = Border(left=thick_side,top=thick_side)
+    ws[column_dict["SET\nCOST"] + '12'].border = Border(left=thick_side,top=thick_side)
+    ws[column_dict["SETTING\nDESCRIPTION"] + '12'].border = Border(right=thick_side,top=thick_side)
+
+    start_col = column_dict["Sell_1"]
+    end_col = column_dict["MKD NM%_1"]
+
+    # Assuming row 12 is to be formatted
+    start_cell = f"{start_col}12"
+    end_cell = f"{end_col}12"
+
+    # Apply the white fill to the specified range
+    for col in ws[start_cell:end_cell]:
+        for cell in col:
+            cell.fill = gold_fill
+
+    ws[column_dict["IMU_1"] + '12'] = "DEFAULT PRICING - GROUP IT CLOSE"
+    ws[column_dict["IMU_1"] + '12'].font = header_font
+    ws[column_dict["IMU_1"] + '12'].alignment = alignment_center
+    for row in ws[column_dict["Sell_1"] + '12:' + column_dict["MKD NM%_1"] + '12']:
+        for cell in row:
+            cell.border = top_border
+    ws[column_dict["Sell_1"] + '12'].border = Border(left=thick_side,top=thick_side)
+    ws[column_dict["MKD NM%_1"] + '12'].border = Border(right=thick_side,top=thick_side)
+    start_col = column_dict["Sell_2"]
+    end_col = column_dict["MKD NM%_2"]
+
+    # Assuming row 12 is to be formatted
+    start_cell = f"{start_col}12"
+    end_cell = f"{end_col}12"
+
+    # Apply the white fill to the specified range
+    for col in ws[start_cell:end_cell]:
+        for cell in col:
+            cell.fill = green_fill
+
     # Dynamically assign value, font, alignment, and fill to the "Sell_2" column (which corresponds to BU)
-    ws[column_dict["Sell_2"] + '12'] = "PRICING REVIEW"
-    ws[column_dict["Sell_2"] + '12'].font = header_font
-    ws[column_dict["Sell_2"] + '12'].alignment = alignment_center
-    ws[column_dict["Sell_2"] + '12'].fill = green_fill
+    ws[column_dict["IMU_2"] + '12'] = "PRICING REVIEW"
+    ws[column_dict["IMU_2"] + '12'].font = header_font
+    ws[column_dict["IMU_2"] + '12'].alignment = alignment_center
 
-    
-    
+    for row in ws[column_dict["Sell_2"] + '12:' + column_dict["MKD NM%_2"] + '12']:
+        for cell in row:
+            cell.border = top_border
+
+    ws[column_dict["Sell_2"] + '12'].border = Border(left=thick_side,top=thick_side)
+    ws[column_dict["MKD NM%_2"] + '12'].border = Border(right=thick_side,top=thick_side)
     # Dynamically create formulas using column_dict
     # ws[column_dict["LANDED\nTOTAL"] + '11'] = '=SUBTOTAL(9,' + column_dict["LANDED\nTOTAL"] + '14:' + column_dict["LANDED\nTOTAL"] + '1379)'
 
@@ -975,12 +1001,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     # Fill colors for B13, C13, D13, and others as per your request
     ws[column_dict["STYLE #"] + '13'].fill = light_blue_fill
     ws[column_dict["DESCRIPTION"] + '13'].fill = light_blue_fill
-    ws[column_dict["Quote / Build #"] + '13'].fill = gray_fill
-    ws[column_dict["Support Comment"] + '13'].fill = gold_fill
-    ws[column_dict["Sales Comment"] + '13'].fill = gold_fill
-    ws[column_dict["Merchant\nComment"] + '13'].fill = gold_fill
-    ws[column_dict["Overview\nComment"] + '13'].fill = yellow_fill
-    ws[column_dict["Product\nPlacement"] + '13'].fill = yellow_fill
+    ws[column_dict["Mnf.\nPolicy"] + '13'].fill = gray_fill
 
     # Additional mappings for BJ13, BK13, etc.
     ws[column_dict["Sell_1"] + '13'].fill = light_blue_fill
@@ -1010,16 +1031,17 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     ws[column_dict["AUR_2"] + '13'].fill = light_yellow_fill
     ws[column_dict["AUR\nDiscount_2"] + '13'].fill = light_yellow_fill
     ws[column_dict["AUR\nGM%_2"] + '13'].fill = light_yellow_fill
-
+    
     ws[column_dict["1st MKD_2"] + '13'].fill = gold_fill
     ws[column_dict["MKD NM%_2"] + '13'].fill = gold_fill
+    ws[column_dict["Support Comment"] + '13'].fill = gold_fill
     # Correctly mapped cells for rows 7, 8, 9
     ws[column_dict["STYLE #"] + '7'].fill = yellow_fill
     ws[column_dict["STYLE #"] + '8'].fill = yellow_fill
     ws[column_dict["STYLE #"] + '9'].fill = yellow_fill
 
     # Correctly mapped for D7
-    ws[column_dict["Quote / Build #"] + '7'].fill = yellow_fill
+    ws[column_dict["Mnf.\nPolicy"] + '7'].fill = yellow_fill
 
     # Correctly mapped for P7, P8 (METAL COST)
     ws[column_dict["METAL\nCOST"] + '7'].fill = yellow_fill
@@ -1032,14 +1054,14 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
 
 
     # Set freeze panes based on the "D14" equivalent in column_dict
-    ws.freeze_panes = ws[column_dict["Quote / Build #"] + '14']
+    ws.freeze_panes = ws[column_dict["Mnf.\nPolicy"] + '14']
    
 
     # Dynamically apply fill for the range J13:BI13 based on specific columns
-    for col in range(ws[column_dict["Item Status\nCode"] + '13'].column, ws[column_dict["Target\nGM%"] + '13'].column + 1):
+    for col in range(ws[column_dict["Item\nStatus\nCode"] + '13'].column, ws[column_dict["Target\nGM%"] + '13'].column + 1):
         col_letter = openpyxl.utils.get_column_letter(col)
         if col_letter in [column_dict["METAL"], column_dict["STONE\nTYPE"], column_dict["QTY"], column_dict["SHAPE"], 
-                        column_dict["Color\nMM Size"], column_dict["Weight"], column_dict["DIA CTTW"], column_dict["Quality"]]:
+                        column_dict["Color\nMM\nSize"], column_dict["wt."], column_dict["DIA CTTW"], column_dict["Quality"]]:
             cell = ws.cell(row=13, column=col)
             cell.fill = light_blue_fill
         else:
@@ -1055,7 +1077,6 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     for row in ws[column_dict["METAL\nCOST"] + '1:' + column_dict["METAL\nCOST"] + '4']:
         for cell in row:
             cell.border = border
-
     # Define thick border sides
     thick_side = Side(border_style="thick", color="000000")
     top_border = Border(top=thick_side)
@@ -1071,6 +1092,8 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     for row in ws[column_dict["IMAGE"] + '10:' + column_dict["MKD NM%_2"] + '10']:
         for cell in row:
             cell.border = top_border
+
+    # Apply thick top border to the range A10:CE10
 
 
     thick_side = Side(border_style="thick", color="000000")
@@ -1120,17 +1143,18 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     apply_borders_dynamic(ws, 7, 8, column_dict["IMU_2"], column_dict["IMU_2"])
     apply_borders_dynamic(ws, 7, 8, column_dict["AUR\nDiscount_2"], column_dict["AUR\nDiscount_2"])
     apply_borders_dynamic(ws, 7, 8, column_dict["1st MKD_2"], column_dict["1st MKD_2"])
-    apply_borders_dynamic(ws, 7, 8, column_dict["Metal\nCost Per\nGram"], column_dict["METAL\nCOST"])
+    apply_borders_dynamic(ws, 7, 8, column_dict["Metal\nCost\n /Gm"], column_dict["METAL\nCOST"])
 
-    # Dynamically apply borders for the range Q12:AL12
-    for row in ws[column_dict["STONE\nTYPE"] + '12:' + column_dict["SETTING\nDESCRIPTION"] + '12']:
-        for cell in row:
-            cell.border = Border(top=thick_side, left=thick_side, right=thick_side, bottom=thin_side)
+
+# # Dynamically apply borders for the range Q12:AL12/
+    # for row in ws[column_dict["STONE\nTYPE"] + '12:' + column_dict["SETTING\nDESCRIPTION"] + '12']:
+    #     for cell in row:
+    #         cell.border = Border(top=thick_side, left=thick_side, right=thick_side, bottom=thin_side)
 
     # Dynamically apply borders for the range BJ12:CE13
-    for row in ws[column_dict["Sell_1"] + '12:' + column_dict["MKD NM%_2"] + '13']:
-        for cell in row:
-            cell.border = Border(top=thick_side, left=thick_side, right=thick_side, bottom=thin_side)
+    # for row in ws[column_dict["Sell_1"] + '12:' + column_dict["MKD NM%_2"] + '13']:
+    #     for cell in row:
+    #         cell.border = Border(top=thick_side, left=thick_side, right=thick_side, bottom=thin_side)
 
     ############ Color Section ############
 
@@ -1163,23 +1187,21 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     column_dict["STONE\nTYPE"],
     column_dict["QTY"],
     column_dict["SHAPE"],
-    column_dict["Color\nMM Size"],
-    column_dict["Weight"],
-    column_dict["WGHT EXT"],
+    column_dict["Color\nMM\nSize"],
+    column_dict["wt."],
+    column_dict["WT.\n Ext."],
     column_dict["CODE"],
     column_dict["Quality"],
-    column_dict["DIA PPC/\nGEM PP Stone"],
+    column_dict["$ PER \nCT/PC"],
     column_dict["COST"],
-    column_dict["IH COST\nOR NOT\n(YES/NO)"],
-    column_dict["SETTING\nCOST"],
-    column_dict["EXT\nSETTING\nCOST"],
-    column_dict["SETTING\nTYPE"],
+    column_dict["IH\n (YES/NO)"],
+    column_dict["SET\nCOST"],
+    column_dict["EXT\nSET\nCOST"],
     column_dict["SETTING\nDESCRIPTION"]
 ]
 
     # Variable to track the first row with a thick border
     first_thick_border_row = None
-
     # Iterate over the rows to find where "Style #" (assumed to be in column B) has a value and apply a thick top border
     for row in ws.iter_rows(min_row=13, max_row=ws.max_row, min_col=2, max_col=2):  # Start from row 13, column B
         for cell in row:
@@ -1227,7 +1249,6 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                     # Ensure thin borders and white background for skip_columns
                     ws.cell(row=row_num, column=col_num).border = Border(top=thin_side, left=thin_side, right=thin_side, bottom=thin_side)
                     ws.cell(row=row_num, column=col_num).fill = white_fill
-
     # Find the max row and apply thick borders to the entire row at the bottom
     for col_num in range(1, ws.max_column + 1):
         for row_num in range(ws.max_row, ws.max_row + 1):  # You can adjust to how many rows you want to apply the thick border
@@ -1238,8 +1259,8 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         column_dict["STONE\nTYPE"],
         column_dict["QTY"],
         column_dict["SHAPE"],
-        column_dict["Color\nMM Size"],
-        column_dict["Weight"],
+        column_dict["Color\nMM\nSize"],
+        column_dict["wt."],
         column_dict["DIA CTTW"],
         column_dict["Quality"]
     ]
@@ -1276,7 +1297,8 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     column_dict["AUR\nDiscount_2"],
     column_dict["AUR\nGM%_2"],
     column_dict["1st MKD_2"],
-    column_dict["MKD NM%_2"]
+    column_dict["MKD NM%_2"],
+    column_dict["Support Comment"]
 ]
 
     # Get the last row in the worksheet
@@ -1316,8 +1338,8 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         column_dict["STONE\nTYPE"],
         column_dict["QTY"],
         column_dict["SHAPE"],
-        column_dict["Color\nMM Size"],
-        column_dict["Weight"],
+        column_dict["Color\nMM\nSize"],
+        column_dict["wt."],
         column_dict["DIA CTTW"],
         column_dict["Quality"]
     ]
@@ -1369,36 +1391,115 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         cell.alignment = header_alignment
     #width
 
+    price_column_indices = [column_index_from_string(column_dict[col]) for col in [
+        "METAL\nCOST",
+        "Metal\nCost\n /Gm",
+        "$ PER \nCT/PC",
+        "COST",
+        "TOTAL\nCS\nCOST",
+        "CS\nIH\nCOST",
+        "TOTAL\nDIA\nCOST",
+        "DIA\nIH\nCOST",
+        "TOTAL\nSTONE\nCOST",
+        "STONE\nIH\nCOST",
+        "SET\nCOST",
+        "EXT\nSET\nCOST",
+        "LABOR\nDTL\nCOST",
+        "LABOR\nTTL\nCOST",
+        "LABOR\nIH\nCOST",
+        "FINDING\nDTL\nCOST",
+        "FINDING\nTTL\nCOST",
+        "FINDING\nIH COST",
+        "STYLE\nTOTAL",
+        "STYLE\nTOTAL\nEXCL.IH",
+        "S/H",
+        "Duty $",
+        "LANDED\nTOTAL",
+    ]]
+    # Iterate through rows and apply dollar format
+    for row_idx, row in enumerate(ws.iter_rows(min_row=14, max_row=last_row), start=14):
+        for col_idx in price_column_indices:
+            cell = ws.cell(row=row_idx, column=col_idx)
+            # Apply dollar format if the value is not zero
+            cell.number_format = '"$"#,##0.00'
 
-
+    three_deicimal = [column_index_from_string(column_dict[col]) for col in ["wt.", "WT.\n Ext."]]
+    for row_idx, row in enumerate(ws.iter_rows(min_row=14, max_row=last_row), start=14):
+        for col_idx in three_deicimal:
+            cell = ws.cell(row=row_idx, column=col_idx)
+            # Apply dollar format to the cell
+            cell.number_format = '#,##0.000'
     # Set row height for row 13
     ws.row_dimensions[13].height = 45  # Adjust row height for row 13
 
     image_width_in_pixels = 150
     column_width = image_width_in_pixels / 7  # Convert pixels to Excel width units
     row_height = image_width_in_pixels / 7     # Add 2 extra units for padding
+    #hiide
+    #  "Sell_1", "Gross\nMargin_1", "Net\nSell_1", "Net\nMargin_1", "MSRP_1", "IMU_1", "AUR_1", "AUR\nDiscount_1",  "AUR\nGM%_1", "1st MKD_1", "MKD NM%_1"
 
     ws.column_dimensions[column_dict['IMAGE']].width = column_width
-
+    columns_to_hide=["CS\nIH\nCOST", "DIA\nIH\nCOST","STONE\nIH\nCOST"]
     ws.row_dimensions.group(1, 4, outline_level=1, hidden=True)
-    ws.column_dimensions.group(column_dict["Support Comment"],column_dict["Product\nPlacement"] , outline_level=1, hidden=True)
+    for col in columns_to_hide:
+        ws.column_dimensions[column_dict[col]].hidden = True
     ws.column_dimensions[column_dict["DESCRIPTION"]].width = 40
-    ws.column_dimensions[column_dict["Metal\nCost Per\nGram"]].width = 10
+    ws.column_dimensions[column_dict["Metal\nCost\n /Gm"]].width = 10
     ws.column_dimensions[column_dict["DIA CTTW"]].width = 10
-    ws.column_dimensions[column_dict["Weight"]].width = 10
-    for col in ["TOTAL\nCS\nCOST", "CS\nIH\nCOST","TOTAL\nDIA\nCOST", "DIA\nIH\nCOST","TTL\nSTONE\nCOST","STONE\nIH\nCOST","LABOR\nQTY", "LABOR\nDTL\nCOST","Labour IH COST\nOR NOT\n(YES/NO)", 
-        "LABOR\nTTL\nCOST", "LABOR\nIH\nCOST","FINDING\nQTY", "FINDING\nDTL\nCOST", "FINDING IH COST\nOR NOT\n(YES/NO)",
-        "FINDING\nTTL\nCOST","FINDING\nIH COST","FINDING\nCERT\n(YES/NO)","FINDING\nCERT COST"]:
-        ws.column_dimensions[column_dict[col]].width = 20
-        
-    ws.column_dimensions[column_dict["SETTING\nDESCRIPTION"]].width = 45
-    ws.column_dimensions[column_dict["LABOR TYPE"]].width = 30
+    ws.column_dimensions[column_dict["wt."]].width = 10
+    for col in ["Sell_1", "Gross\nMargin_1", "Net\nSell_1", "Net\nMargin_1", "MSRP_1", "IMU_1", "AUR_1", "AUR\nDiscount_1", 
+        "AUR\nGM%_1", "1st MKD_1", "MKD NM%_1", "Sell_2", "Gross\nMargin_2", "Net\nSell_2", "Net Margin_2", 
+        "MSRP_2", "IMU_2", "AUR_2", "AUR\nDiscount_2", "AUR\nGM%_2", "1st MKD_2", "MKD NM%_2"]:
+         ws.column_dimensions[column_dict[col]].width = 11
+
+    for col in [ "LABOR\nDTL\nCOST", "LABOR\nTTL\nCOST", "LABOR\nIH\nCOST","FINDING\nQTY", "FINDING\nDTL\nCOST", "FINDING IH COST\nOR NOT\n(YES/NO)",
+        "FINDING\nTTL\nCOST","FINDING\nIH COST","FINDING\n(YES/NO)"]:
+        ws.column_dimensions[column_dict[col]].width = 15
+    for col in ["TOTAL\nCS\nCOST", "CS\nIH\nCOST","TOTAL\nDIA\nCOST", "DIA\nIH\nCOST","TOTAL\nSTONE\nCOST","STONE\nIH\nCOST"]:
+        ws.column_dimensions[column_dict[col]].width = 10   
+    ws.column_dimensions[column_dict["SETTING\nDESCRIPTION"]].width = 35
+    ws.column_dimensions[column_dict["LABOR TYPE"]].width = 20
     ws.column_dimensions[column_dict["FINDING\nTYPE"]].width = 20
     ws.column_dimensions[column_dict["STYLE\nTOTAL"]].width = 20
     ws.column_dimensions[column_dict["STYLE\nTOTAL\nEXCL.IH"]].width = 20
     ws.column_dimensions[column_dict["LANDED\nTOTAL"]].width = 20
-    
-    
+    ws.column_dimensions[column_dict["LABOR\nQTY"]].width = 8
+    ws.column_dimensions[column_dict["LABOR\nDTL\nCOST"]].width = 8
+    ws.column_dimensions[column_dict["Labour IH COST\nOR NOT\n(YES/NO)"]].width = 9
+    ws.column_dimensions[column_dict["LABOR\nTTL\nCOST"]].width = 8
+    ws.column_dimensions[column_dict["LABOR\nTTL\nCOST"]].width = 8
+    ws.column_dimensions[column_dict["LABOR\nTTL\nCOST"]].width = 8
+    ws.column_dimensions[column_dict["LABOR\nTTL\nCOST"]].width = 8
+    ws.column_dimensions[column_dict["LABOR\nTTL\nCOST"]].width = 8
+    ws.column_dimensions[column_dict["S/H"]].width = 8
+    ws.column_dimensions[column_dict["Duty $"]].width = 8
+    ws.column_dimensions[column_dict["Duty %"]].width = 8
+
+    ws.column_dimensions[column_dict["Support Comment"]].width = 14
+    #Rename
+    # ws.column_dimensions[column_dict["LABOR\nQTY"]] = "Q"
+    ws[column_dict["LABOR\nQTY"] + '13']="QTY"
+    ws[column_dict["LABOR\nDTL\nCOST"] + '13']="LABOR\nCOST"
+    ws[column_dict["Labour IH COST\nOR NOT\n(YES/NO)"]+'13'] ="IH\n(YES/NO)"
+    ws[column_dict["LABOR\nTTL\nCOST"] + '13']="LABOR\nTOTAL\nCOST"
+    red_font = Font(color="FF0000",bold=True)  # Hex code for red
+
+    # Cell reference for "Manf.\nCode" in row 13
+    cell_key = column_dict["Manf.\nCode"]  # Extract column from the dictionary
+    cell_reference = f"{cell_key}13"       # Combine column with row number
+
+    # Apply red font to the cell
+    ws[cell_reference].font = red_font
+
+    #hiiden
+    ws.column_dimensions.group(
+    start=column_dict["Sell_1"], 
+    end=column_dict["MKD NM%_1"], 
+    hidden=True, 
+    outline_level=1
+)
+    ws.column_dimensions[column_dict["LABOR\nIH\nCOST"]].hidden = True
+    ws.column_dimensions[column_dict["FINDING\nIH COST"]].hidden = True
     # Detect the last row and last column with data
     last_row = ws.max_row  # Detect the last row with data
     last_col = ws.max_column  # Detect the last column with data
@@ -1422,7 +1523,6 @@ def fill_style_column(sheet, start_row=13, style_column=2):
         elif current_value:  # If the cell is empty, fill with the current value
             sheet.cell(row, style_column).value = current_value
 
-
 def apply_conditional_formatting(sheet, column_letter, start_row=13):
     """Apply conditional formatting to hide duplicate values in the specified column."""
     last_row = sheet.max_row
@@ -1435,7 +1535,6 @@ def apply_conditional_formatting(sheet, column_letter, start_row=13):
 
     # Apply the rule to the specified column from the start row to the last row
     sheet.conditional_formatting.add(f"{column_letter}{start_row}:{column_letter}{last_row}", rule)
-
 
 def adjust_images_with_xlwings(input_file, output_file):
     """Adjust image properties using xlwings and apply formatting across all sheets."""
@@ -1467,7 +1566,7 @@ def adjust_images_with_xlwings(input_file, output_file):
 
         # Iterate over all sheets to adjust image placement
         for ws_xlwings in wb_xlwings.sheets:
-            # Adjust image placement: 'Move and size with cells'
+            # Adjust image placement: 'Move and size with cells' 
             for picture in ws_xlwings.api.Shapes:
                 picture.Placement = 1  # 1 = 'Move and size with cells'
                 print(f"Adjusted {picture.Name} to 'Move and size with cells' in sheet {ws_xlwings.name}.")

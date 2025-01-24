@@ -1,5 +1,6 @@
 Frontend/finaldeploy/node_modules/
-
+xlsx_processor1/img_all/
+img_all/
 
 # Django #
 *.log
@@ -167,3 +168,4 @@ GitHub.sublime-settings
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
