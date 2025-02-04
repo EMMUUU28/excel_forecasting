@@ -1,6 +1,4 @@
 import os 
-import zipfile 
-import shutil
 import datetime
 from calendar import monthrange
 from datetime import datetime,timedelta
@@ -15,135 +13,6 @@ from multiprocessing import Manager, Pool
 import json 
 
 
-def make_zip_and_delete(folder_path):
-    folder_path = os.path.normpath(folder_path)
-    zip_file_path = os.path.normpath(f'{folder_path}.zip')
-    
-    try:
-        # Create a ZIP file
-        with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for root, dirs, files in os.walk(folder_path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, folder_path)  # Preserve folder structure
-                    zipf.write(file_path, arcname)
-        
-        print(f"Folder '{folder_path}' has been compressed into '{zip_file_path}'")
-
-        # Delete the folder after zipping
-        shutil.rmtree(folder_path)
-        print(f"Folder '{folder_path}' has been deleted successfully.")
-    
-    except PermissionError:
-        print(f"Permission denied: Cannot access '{folder_path}'. Please check folder permissions.")
-    except FileNotFoundError:
-        print(f"File not found: '{folder_path}' does not exist.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
- 
-# Helper function for get_previous_retail_week()
-def get_retail_weeks(year, month):
-    """
-    Calculate the number of retail weeks in a given month.
-    Retail weeks follow the Sunday-to-Saturday structure, 
-    and all days in a week belong to the month in which the week starts.
-    
-    Args:
-        year (int): The year of the month.
-        month (int): The month (1 for January, 12 for December).
-
-    Returns:
-        int: Number of retail weeks in the month.
-    """
-    # Get the first day and last day of the month
-    first_day = datetime(year, month, 1)
-    last_day = datetime(year, month, monthrange(year, month)[1])
-
-    # Find the first Sunday of the month
-    first_sunday = first_day + timedelta(days=(6 - first_day.weekday()) % 7)
-
-    # Find the last Saturday of the month
-    last_saturday = last_day - timedelta(days=last_day.weekday() + 1)
-
-    # Count retail weeks
-    current_week_start = first_sunday
-    week_count = 0
-
-    while current_week_start <= last_saturday:
-        week_count += 1
-        current_week_start += timedelta(days=7)  # Move to the next Sunday
-
-    # Check if the final week starts in the current month (partial week rule)
-    if current_week_start <= last_day:
-        week_count += 1
-
-    return week_count
-
-def get_previous_retail_week():
-    """
-    Get the previous week's month, year of the previous month, 
-    last year's occurrence of that month, last month before the previous month in numeric format,
-    determine SP (Spring) or FA (Fall) based on the previous month,
-    and calculate the number of retail weeks for each month individually.
-    """
-    # Use the current date as input
-    current_date = datetime.now()
-    print(f"Current date: {current_date}")
-
-    # Find the current week's Sunday
-    current_sunday = current_date - timedelta(days=current_date.weekday() + 1)
-
-    # Calculate the previous week's Sunday
-    previous_week_sunday = current_sunday - timedelta(days=7)
-
-    # Determine the previous week number
-    previous_week_number = (previous_week_sunday.day - 1) // 7 + 1
-
-    # Get the month and year of the previous week
-    previous_month = previous_week_sunday.strftime('%b').upper()
-    year_of_previous_month = previous_week_sunday.year
-
-    # Determine last year's occurrence of the same month
-    last_year_of_previous_month = year_of_previous_month - 1
-
-    # Determine the last month before the previous month
-    last_month_of_previous_month_date = previous_week_sunday.replace(day=1) - timedelta(days=1)
-    last_month = last_month_of_previous_month_date.strftime('%b').upper()
-
-    # Custom mapping for months
-    month_mapping = {
-        'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4,
-        'JUN': 5, 'JUL': 6, 'AUG': 7, 'SEP': 8,
-        'OCT': 9, 'NOV': 10, 'DEC': 11, 'JAN': 12
-    }
-    last_month_of_previous_month_numeric = month_mapping[last_month]
-
-    # Determine SP (Spring) or FA (Fall/Winter) based on the previous month
-    spring_months = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
-    fall_months = ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
-
-    season = "SP" if previous_month in spring_months else "FA"
-
-    # Calculate the number of retail weeks for each month of the current year
-    current_year = year_of_previous_month
-    print(current_year)
-    # Individual variables for retail weeks of each month
-
-    feb_weeks = get_retail_weeks(current_year,2)
-    mar_weeks = get_retail_weeks(current_year,3)
-    apr_weeks = get_retail_weeks(current_year,4)
-    may_weeks = get_retail_weeks(current_year,5)
-    jun_weeks = get_retail_weeks(current_year,6)
-    jul_weeks = get_retail_weeks(current_year,7)
-    aug_weeks = get_retail_weeks(current_year,8)
-    sep_weeks = get_retail_weeks(current_year,9)
-    oct_weeks = get_retail_weeks(current_year,10)
-    nov_weeks = get_retail_weeks(current_year,11)
-    dec_weeks = get_retail_weeks(current_year,12)
-    jan_weeks = get_retail_weeks(current_year + 1, 1)  # January belongs to the next year
-
-    return previous_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks
-    # return previous_month, previous_week_number, year_of_previous_month, last_year_of_previous_month, last_month_of_previous_month_numeric, season
 
 def add_dropdown(ws, cell, options):
     # Create a data validation object with the list of options
@@ -185,24 +54,9 @@ def apply_format(ws, cell_ranges, number_format):
             cell = ws[cell_range]
             cell.number_format = number_format
 
-def read_excel_sheet(file_details):
-    file_path, sheet_name, kwargs = file_details
-    return sheet_name, pd.read_excel(file_path, sheet_name=sheet_name, **kwargs)
 
-# multiprocess pool for reading excel 
-def process_sheet(sheet_name, config, input_path):
-    """
-    Function to process a single sheet with specified configuration.
-    """
-    print(f"Processing sheet: {sheet_name}")
-    try:
-        excel_file = pd.ExcelFile(input_path)
-        data = excel_file.parse(sheet_name=sheet_name, **config)
-        print(f"Finished processing sheet: {sheet_name}")
-        return sheet_name, data
-    except Exception as e:
-        print(f"Error processing sheet {sheet_name}: {e}")
-        return sheet_name, None
+
+
 
 # multiprocess pool for generating excel 
 def process_category(args):
@@ -252,6 +106,7 @@ def process_category(args):
     # Placeholder for the processing logic of each category
     # Use the original code logic for processing categories here.
     print(f"Processing Category: {category} with Code: {code} and Num Products: {num_products}")
+   
     data = [
             ["", "TY", year_of_previous_month, "LY", last_year_of_previous_month, "Season", season, "Current Year", "Month", current_month, current_month_number, "Week", previous_week_number, "", "MAY-SEP", "", "", "Last Completed Month", last_month_of_previous_month_numeric, "", "Use EOM Actual?", rolling_method],
             ["", "Count of Items", "", 8215, "", "", "", "Last SP / FA Months", "Month", "Jul", "", "Jan", 12, "Sorted by:", "Dept Grouping >Class ID", "", "", ""],
@@ -273,8 +128,6 @@ def process_category(args):
     notify_macys=[]
     pids_below_door_count = []
 
-
-    # Loop through products to generate PIDs
 
     # Step 4: Populate Worksheet with Data
     for row_num, row_data in enumerate(data, 1):
@@ -3039,34 +2892,20 @@ def process_category(args):
     }
     return result
 
-def convert_to_tuples(categories):
-    return [(category['name'], category['value']) for category in categories]
+
+
+
+from .Utils.readExcel import create_df
+from .Utils.filterDataframe import filter_df
+from .Utils.createMasterDF import create_master_df
+from .Utils.static import birthstone_data,data,month_dict
+from .Utils.retailWeeks import get_previous_retail_week
 
 def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple):
 
     print("input_path------>",input_path)
 
-    sheet_config = {
-        "Index": {"usecols": "A:P", "nrows": 41, "header": 2},
-        "report grouping": {"header": None},
-        "Repln Items": {"header": 2},
-        "Setup Sales -L3M & Future": {"header": 9},
-        "Macys Recpts": {"header": 1},
-        "All_DATA": {"header": 0},
-        "MCOM_Data": {"header": 0},
-    }
-
-    # Create a multiprocessing pool
-    with mp.Pool(processes=mp.cpu_count()) as pool:
-        # Prepare arguments for multiprocessing
-        pool_args = [(sheet_name, config, input_path) for sheet_name, config in sheet_config.items()]
-        
-        # Process each sheet in parallel
-        output = pool.starmap(process_sheet, pool_args)
-
-    # Collect results into a dictionary
-    dataframes = {sheet_name: data for sheet_name, data in output if data is not None}
-    print("All sheets processed successfully!")
+    dataframes = create_df(input_path)
 
     # Store the results into specified variables
     index_df = dataframes.get("Index")
@@ -3093,317 +2932,13 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
     if MCOM_Data is not None:
         print(f"MCOM_Data sheet processed with {len(MCOM_Data)} rows.")
 
-    #make master sheet# Specify the columns you want to extract
-    columns_to_extract = [
-        'PID', 'Cross ref', 'Sort', 'Dpt ID', 'Dpt Desc', 'Mkst', 'PID Desc',
-        'CL ID', 'Class Desc', 'SC ID', 'SC Desc', 'MstrSt ID', 'Masterstyle Desc',
-        'TY Last Cost', 'Own Retail', 'AWR 1st Tkt Ret', 'Prod Desc', 'Grouping',
-        'Vendor', 'Vendor Name', 'FC Index', 'FLDC','Safe/Non-Safe', 'Item Code'
-    ]
 
-    # Extract the specified columns
-    df_filtered = planning_df[columns_to_extract]
+    df_filtered = filter_df(planning_df)
 
-    # Create a new 'Gender' column based on the conditions
-    df_filtered['Gender'] = 'Women'  # Default value
-    df_filtered.loc[df_filtered['Dpt ID'].isin([768, 771]), 'Gender'] = 'Men'
-    df_filtered.loc[df_filtered['CL ID'] == 86, 'Gender'] = 'Children'
+    birthstone_sheet, master_sheet, vendor_sheet = create_master_df(df_filtered,birthstone_data,data)
 
-
-    # List of birthstone names
-    birthstones = [
-        'GARNET', 'AMETHYST', 'AQUAMARINE', 'DIAMOND', 'EMERALD', 'PEARL', 
-        'RUBY', 'PERIDOT', 'SAPPHIRE', 'OPAL', 'CITRINE', 'TANZANITE'
-    ]
-
-    # Function to check if 'Class Desc' contains any birthstone name
-    def find_birthstone(class_desc):
-        if isinstance(class_desc, str):  # Ensure the value is a string
-            for stone in birthstones:
-                if stone in class_desc.upper():  # Check if the birthstone is part of the string
-                    return stone
-        return ''  # Return blank if no birthstone is found
-
-    # Apply the function to create the 'Birthstone' column
-    df_filtered['Birthstone'] = df_filtered['Class Desc'].apply(find_birthstone)
-
-    # Create the 'BSP_or_not' column based on the 'MstrSt ID' condition
-    df_filtered['BSP_or_not'] = df_filtered['MstrSt ID'].apply(lambda x: 'BSP' if x in [26481, 74692] else '')
-
-
-    def categorize_product(class_desc):
-        if isinstance(class_desc, str):  # Ensure the value is a string
-            class_desc = class_desc.upper()
-            if 'EARRINGS' in class_desc or 'EARS' in class_desc:
-                return 'Earrings'
-            elif 'PENDANTS' in class_desc or 'PENDS' in class_desc:
-                return 'Pendants'
-            elif ' RING' in class_desc:  # Notice the space before "RINGS"
-                return 'Rings'
-            elif 'BRACELETS' in class_desc:
-                return 'Bracelets'
-            elif 'CHAIN' in class_desc:
-                return 'Necklace'
-            elif 'NECKS' in class_desc or 'NECKLACE' in class_desc:
-                return 'Necklace'
-            elif 'SET' in class_desc:
-                return 'Set'
-            elif 'BAND' in class_desc:
-                return 'BAND'
-        return ''  # Return blank if no match found
-
-    # Apply the function to create the 'category' column
-    df_filtered['category'] = df_filtered['Class Desc'].apply(categorize_product)
-
-
-    def update_category_from_prod_desc(row):
-        if not row['category']:  # If category is blank
-            prod_desc = str(row['Prod Desc']).lower()
-            categories_found = []
-
-            # Search for keywords in Prod desc
-            if 'earring' in prod_desc or 'stud' in prod_desc:
-                categories_found.append('Earrings')
-            if ' ring' in prod_desc:
-                categories_found.append('Rings')
-            if 'pendant' in prod_desc or 'necklace' in prod_desc:
-                categories_found.append('Pendants' if 'pendant' in prod_desc else 'Necklace')
-            if 'bracelet' in prod_desc:
-                categories_found.append('Bracelets')
-            if 'band' in prod_desc:
-                categories_found.append('Band')
-            if 'locket' in prod_desc:
-                categories_found.append('Locket')
-            # If multiple categories are found, set as 'Set'
-            if len(categories_found) > 1:
-                return 'Set'
-            elif categories_found:
-                return categories_found[0]
-        return row['category']  # Return the original category if not blank
-
-    # Apply the update function
-    df_filtered['category'] = df_filtered.apply(update_category_from_prod_desc, axis=1)
-
-
-    # Create the 'type' column based on conditions in 'Prod desc'
-    def determine_type(prod_desc):
-        if isinstance(prod_desc, str):  # Ensure the value is a string
-            prod_desc = prod_desc.lower()
-            if 'heart' in prod_desc:
-                return 'Heart'
-            elif 'stud' in prod_desc:
-                return 'Studs'
-            elif 'drop' in prod_desc:
-                return 'Drop'
-        return ''  # Return blank if no match found
-
-    # Apply the function to create the 'type' column
-    df_filtered['type'] = df_filtered['Prod Desc'].apply(determine_type)
-
-    birthstone_data = [
-        (1, 'January', 'Garnet'),
-        (2, 'February', 'Amethyst'),
-        (3, 'March', 'Aquamarine'),
-        (4, 'April', 'Diamond'),
-        (5, 'May', 'Emerald'),
-        (6, 'June', 'Pearl'),
-        (7, 'July', 'Ruby'),
-        (8, 'August', 'Peridot'),
-        (9, 'September', 'Sapphire'),
-        (10, 'October', 'Opal'),
-        (11, 'November', 'Citrine'),
-        (12, 'December', 'Tanzanite')
-    ]
-
-    # Create a DataFrame from the data
-    birthstone_sheet = pd.DataFrame(birthstone_data, columns=['Month', 'Month Name', 'Birthstone'])
-
-
-    master_sheet = df_filtered[['PID','category','Birthstone','BSP_or_not','type','Gender','Vendor','Vendor Name','Own Retail','FC Index', 'FLDC','Safe/Non-Safe', 'Item Code']]
-
-    # Create the unique sheets
-
-    df_unique_vendor = df_filtered[['Vendor', 'Vendor Name']].drop_duplicates().dropna()
-
-
-    data = [
-        {"Vendor Name": "ALMOND (THAILAND) LIMITED", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
-        {"Vendor Name": "AMMANTE JEWELLS LLP", "Country of Origin": "India", "Lead Time(weeks)": 8},
-        {"Vendor Name": "ARIN", "Country of Origin": "Peru", "Lead Time(weeks)": 9},
-        {"Vendor Name": "ARPAS INTERNATIONAL LTD", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "ASIAN STAR COMPANY LTD", "Country of Origin": "India", "Lead Time(weeks)": 8},
-        {"Vendor Name": "BEAUTY GEMS FACTORY CO LTD", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
-        {"Vendor Name": "CHARM AMERICA", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "CREATIONS JEWELLERY MFG. PVT. LTD.", "Country of Origin": "India", "Lead Time(weeks)": 8},
-        {"Vendor Name": "DAISY'S COLLECTION, INC", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "DEORO - WIRE", "Country of Origin": "Peru", "Lead Time(weeks)": 9},
-        {"Vendor Name": "DIA GOLD CREATION PVT. LTD.", "Country of Origin": "India", "Lead Time(weeks)": 8},
-        {"Vendor Name": "DRL Manufacturing - LG", "Country of Origin": "DRL", "Lead Time(weeks)": 10},
-        {"Vendor Name": "DRL MANUFACTURING S.A.", "Country of Origin": "DRL", "Lead Time(weeks)": 10},
-        {"Vendor Name": "DRL/SARDELLI", "Country of Origin": "DRL", "Lead Time(weeks)": 10},
-        {"Vendor Name": "GDL JEWELLERY LTD", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
-        {"Vendor Name": "GOLDENLINE C/O BOGAZICI HEDIYELIK A.S.", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "IJM-INTERCONTINENTAL JEWELLERY MFG", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
-        {"Vendor Name": "JOHN C NORDT COMPANY", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "LARA CORPORATION LIMITED", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "Leach & Garner (HK) Limited", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "LINEA NUOVA S.A.", "Country of Origin": "Peru", "Lead Time(weeks)": 9},
-        {"Vendor Name": "Milor S.P.A", "Country of Origin": "Italy", "Lead Time(weeks)": 9},
-        {"Vendor Name": "MIORO GOLD, LLC", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "NEW GOLD", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "PD&P LTD.", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "RICHLINE ITALY SRL", "Country of Origin": "Italy", "Lead Time(weeks)": 12},
-        # Note: The country for "RICHLINE SA PTY" is unclear in the provided data. 
-        # If "Zales" is not a country, you can adjust as needed or remove. 
-        {"Vendor Name": "RICHLINE SA PTY", "Country of Origin": "Zales", "Lead Time(weeks)": None},
-        {"Vendor Name": "RLG STANDARD MANUFACTURING VENDOR", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "S&S JEWELRY", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "SABELLI, S.A. DE C.V.", "Country of Origin": "Mexico", "Lead Time(weeks)": 9},
-        {"Vendor Name": "SERENITY JEWELS PVT LTD", "Country of Origin": "India", "Lead Time(weeks)": 8},
-        {"Vendor Name": "SHANGOLD INDIA LTD", "Country of Origin": "India", "Lead Time(weeks)": 8},
-        {"Vendor Name": "SILO SPA-WIRES", "Country of Origin": "Italy", "Lead Time(weeks)": 12},
-        {"Vendor Name": "STRONG JEWELRY(HK) CO LTD CHONG", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "T.C.I. LTD", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "National Chain", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        # Repeated entries (if you want to keep them exactly as listed):
-        {"Vendor Name": "Leach & Garner (HK) Limited", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "LEACH & GARNER(HK) LTD", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "MANJUSAKA JEWELERS CO.,LTD", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "MEICHONG JEWELRY (HK) COMPANY LIMITED", "Country of Origin": "China", "Lead Time(weeks)": 8},
-        {"Vendor Name": "NATIONAL CHAIN", "Country of Origin": "US", "Lead Time(weeks)": 9},
-        {"Vendor Name": "PRIME DIRECT LIMITED", "Country of Origin": "China", "Lead Time(weeks)": 8},
-    ]
-    
-    # Create the DataFrame
-    df_coo = pd.DataFrame(data)
-
-    # Merge the data on Vendor Name to add the 'Country of Origin' and 'Lead Time'
-    vendor_sheet = pd.merge(df_unique_vendor, df_coo[['Vendor Name', 'Country of Origin', 'Lead Time(weeks)']], 
-                        on='Vendor Name', how='left')
-
-
-
-    def get_previous_retail_week():
-        """
-        Get the previous week's month, year of the previous month, 
-        last year's occurrence of that month, last month before the previous month in numeric format,
-        determine SP (Spring) or FA (Fall) based on the previous month,
-        and calculate the number of retail weeks for each month individually.
-        """
-        # Use the current date as input
-        current_date = datetime.now()
-
-        # Find the current week's Sunday
-        current_sunday = current_date - timedelta(days=current_date.weekday() + 1)
-
-        # Calculate the previous week's Sunday
-        previous_week_sunday = current_sunday - timedelta(days=7)
-
-        # Determine the previous week number
-        previous_week_number = (previous_week_sunday.day - 1) // 7 + 1
-
-        # Get the month and year of the previous week
-        current_month = previous_week_sunday.strftime('%b')
-        year_of_previous_month = previous_week_sunday.year
-
-        # Determine last year's occurrence of the same month
-        last_year_of_previous_month = year_of_previous_month - 1
-
-        # Determine the last month before the previous month
-        last_month_of_previous_month_date = previous_week_sunday.replace(day=1) - timedelta(days=1)
-        last_month = last_month_of_previous_month_date.strftime('%b').upper()
-
-        # Custom mapping for months
-        month_mapping = {
-            'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4,
-            'JUN': 5, 'JUL': 6, 'AUG': 7, 'SEP': 8,
-            'OCT': 9, 'NOV': 10, 'DEC': 11, 'JAN': 12
-        }
-        last_month_of_previous_month_numeric = month_mapping[last_month]
-
-        # Determine SP (Spring) or FA (Fall/Winter) based on the previous month
-        spring_months = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
-        fall_months = ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
-
-        season = "SP" if current_month in spring_months else "FA"
-
-        # Calculate the number of retail weeks for each month of the current year
-        current_year = year_of_previous_month
-        # Individual variables for retail weeks of each month
-    
-
-        def get_retail_weeks(year, month):
-            """
-            Calculate the number of retail weeks in a given month.
-            Retail weeks follow the Sunday-to-Saturday structure, 
-            and all days in a week belong to the month in which the week starts.
-            
-            Args:
-                year (int): The year of the month.
-                month (int): The month (1 for January, 12 for December).
-
-            Returns:
-                int: Number of retail weeks in the month.
-            """
-            # Get the first day and last day of the month
-            first_day = datetime(year, month, 1)
-            last_day = datetime(year, month, monthrange(year, month)[1])
-
-            # Find the first Sunday of the month
-            first_sunday = first_day + timedelta(days=(6 - first_day.weekday()) % 7)
-
-            # Find the last Saturday of the month
-            last_saturday = last_day - timedelta(days=last_day.weekday() + 1)
-
-            # Count retail weeks
-            current_week_start = first_sunday
-            week_count = 0
-
-            while current_week_start <= last_saturday:
-                week_count += 1
-                current_week_start += timedelta(days=7)  # Move to the next Sunday
-
-            # Check if the final week starts in the current month (partial week rule)
-            if current_week_start <= last_day:
-                week_count += 1
-
-            return week_count
-
-        feb_weeks = get_retail_weeks(current_year,2)
-        mar_weeks = get_retail_weeks(current_year,3)
-        apr_weeks = get_retail_weeks(current_year,4)
-        may_weeks = get_retail_weeks(current_year,5)
-        jun_weeks = get_retail_weeks(current_year,6)
-        jul_weeks = get_retail_weeks(current_year,7)
-        aug_weeks = get_retail_weeks(current_year,8)
-        sep_weeks = get_retail_weeks(current_year,9)
-        oct_weeks = get_retail_weeks(current_year,10)
-        nov_weeks = get_retail_weeks(current_year,11)
-        dec_weeks = get_retail_weeks(current_year,12)
-        jan_weeks = get_retail_weeks(current_year + 1, 1)  # January belongs to the next year
-
-        return current_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks
-        # return current_month, previous_week_number, year_of_previous_month, last_year_of_previous_month, last_month_of_previous_month_numeric, season
-
-    # Call the function and #print the results
     current_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks = get_previous_retail_week()
 
-
-   
-#     category_tuples=[
-
-#     ('Bridge Gem', '742'),
-#     ('Gold', '746'),
-#     ('Gold', '262&270'),
-#     ('Womens Silver', '260&404'),
-#     ('Precious', '264&268'),
-#     ('Fine Pearl', '265&271'),
-#     ('Semi', '272&733'),
-#     ('Diamond', '734&737&748'),
-#     ('Bridal', '739&267&263'),
-#     ("Men's", '768&771')
-
-# ]
     category_tuples = input_tuple
     
     
@@ -3419,25 +2954,15 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
     )
     for category, code in category_tuples]
     
-    month_dict = {
-        "Feb": 1,
-        "Mar": 2,
-        "Apr": 3,
-        "May": 4,
-        "Jun": 5,
-        "Jul": 6,
-        "Aug": 7,
-        "Sep": 8,
-        "Oct": 9,
-        "Nov": 10,
-        "Dec": 11,
-        "Jan": 12
-    }
+    
     current_month_number = month_dict.get(current_month, "Month not found")
+
     if current_month in [ "Oct","Nov" "Dec","Jan"]:
         rolling_method="Current MTH"
     else:
         rolling_method="YTD"
+
+
     year_of_previous_month=2024
     last_year_of_previous_month=2023
     
@@ -3475,12 +3000,9 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
         master_sheet,
         vendor_sheet,
         birthstone_sheet
-
     ) 
     
-    
     #main
-    # args = [(category, (code, num_products), dynamic_categories, file_path, other_params) for category, (code, num_products) in dynamic_categories.items()]
     args = [(category, (code, num_products), dynamic_categories, file_path, other_params)    for category, code, num_products in dynamic_categories ]
     # Use multiprocessing pool to process the categories
     with Pool(processes=os.cpu_count()) as pool:
