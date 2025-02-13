@@ -1,20 +1,26 @@
-import os 
+
+import pandas as pd
+import tempfile
+import pandas as pd
 import openpyxl
+import os
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.units import pixels_to_points, points_to_pixels
 from openpyxl.styles import numbers
+from openpyxl.styles import NamedStyle
 from openpyxl.drawing.image import Image
-import hashlib
-import shutil
 from io import BytesIO
 from PIL import Image as PILImage
-import pandas as pd
-from django.conf import settings
-from openpyxl.utils import get_column_letter,column_index_from_string
+from openpyxl import load_workbook
+from openpyxl.drawing.image import Image as ExcelImage
+# Input Excel file
+from openpyxl.utils import column_index_from_string 
+import hashlib
 import xlwings as xw
 from openpyxl.formatting.rule import FormulaRule
-from . data import SETTING_CODE,SETTING_TYPE_DIC
-
-
+import shutil
+from  data import *
 # Input Excel sheets
 METAL_COMPONENTS_SHEET = 'METAL & COMPONENTS'
 LABOR_SHEET = 'LABOR'
@@ -24,15 +30,16 @@ IMAGE_SHEET = 'IMAGE'
 # Output directory for extracted images
 OUTPUT_IMAGE_DIR = 'img_all'
 
+current_directory = os.getcwd()
+
 set_df=pd.read_excel("SETTING CODE DESCP.xlsx")
 SETTING_DESC=dict(zip(set_df['Code'],set_df['Description']))
+# Output Excel file
 
 name_mapping = {}
-
 # Function to hash the Itemno to generate a safe filename
 def hash_item_name(item_name):
     return hashlib.md5(item_name.encode()).hexdigest()  # Generate a unique hash for the item name
-
 
 def apply_formatting(ws, cell_range, headers, values, header_font, value_font, alignment, border,dollar=False):
     # Split the range to get the start and end cells
@@ -63,6 +70,7 @@ def apply_formatting(ws, cell_range, headers, values, header_font, value_font, a
         ws[cell].border = border
 
 
+
 def index_to_column(index):
     column_str = ""
     while index > 0:
@@ -71,11 +79,14 @@ def index_to_column(index):
     return column_str
 
 
+
+
 def get_single_or_longest_string(strings):
     if len(strings) == 1:
         return strings[0]
     else:
         return max(strings, key=len)
+
 
 
 def get_column_width(cell):
@@ -103,7 +114,6 @@ def get_column_width(cell):
             total_width += char_widths['default']
 
     return total_width
-
 
 def download_images(INPUT_EXCEL_FILE):
     # Load the source workbook and select the 'IMAGE' sheet
@@ -145,8 +155,13 @@ def download_images(INPUT_EXCEL_FILE):
                 break
         else:
             print(f"No image found for item {item_name} in row {row_idx}")
-      
+    
+
+    
     source_wb.close()
+    
+   
+    
     
     
 def add_data_to_sheet(INPUT_EXCEL_FILE, OUTPUT_EXCEL_FILE):
@@ -216,15 +231,26 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     op_li=SETTING_CODE
     
     column_dict = {name: index_to_column(i+1) for i, name in enumerate(column_names)}
-
-
-    single_df=metal_df[[
+    if 'Manufacturing Policy' in metal_df.columns and 'AvgOfDuty %' in metal_df.columns:
+        single_df=metal_df[[
         "Itemno",
+        'Manufacturing Policy',
+        'AvgOfDuty %',
         "dbo_NAV_Item_Master.Description",
         "Item Status Code",
         "Vendor No_",
         "Country Of Origin Code","Metal Quality Code","Fin Metal weight"
     ]].drop_duplicates().reset_index(drop=True)
+
+    else:
+
+        single_df=metal_df[[
+            "Itemno",
+            "dbo_NAV_Item_Master.Description",
+            "Item Status Code",
+            "Vendor No_",
+            "Country Of Origin Code","Metal Quality Code","Fin Metal weight"
+        ]].drop_duplicates().reset_index(drop=True)
     
     # single_df['inhouse_or_not'] = ['YES' if i == 'IH Assembly' else 'NO' for i in single_df['Supply Policy']]
 
@@ -377,7 +403,6 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     start_row = 14  # Adjust this to the row where you want to start inserting images
     
     r = 14
-    print('Number of items in single_df:', len(single_df))
     for i in range(len(single_df)):
         # Get the original item name from single_df
         original_item_name = single_df['Itemno'].iloc[i]
@@ -391,17 +416,33 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
             
             # Check if the image file exists
             if os.path.exists(image_path):
+                img_pil = PILImage.open(image_path)
+                original_width, original_height = img_pil.size
+
+                # Desired maximum width and height to fit in the cell
+                max_width, max_height = 150, 150
+
+                # Calculate new dimensions while preserving the aspect ratio
+                aspect_ratio = original_width / original_height
+
+                if aspect_ratio > 1:  # Wider image (landscape)
+                    new_width = min(max_width, original_width)
+                    new_height = int(new_width / aspect_ratio)
+                else:  # Taller image (portrait) or square
+                    new_height = min(max_height, original_height)
+                    new_width = int(new_height * aspect_ratio)
+
+                # Load image and apply the new dimensions
                 img = Image(image_path)
-                img.width, img.height = int(2.54 * 37.79527559), int(1.62 * 37.79527559)
-     # Add image using the column for "IMAGE" from the column_dict
-                
+                img.width, img.height = new_width, new_height
+
+                # Add image using the column for "IMAGE" from the column_dict
                 ws.add_image(img, column_dict["IMAGE"] + str(r))
                 print(f"Added image for item {original_item_name} at {column_dict['IMAGE']}{r}")
             else:
                 print(f"Image file {hashed_filename}.png not found in directory.")
         else:
             print(f"No mapping found for item {original_item_name}")
-        
         # Mapping the data to the worksheet using column_dict
         ws[column_dict["STYLE #"] + str(r)] = single_df["Itemno"].iloc[i]
         ws[column_dict["DESCRIPTION"] + str(r)] = single_df["dbo_NAV_Item_Master.Description"].iloc[i]
@@ -410,7 +451,27 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["COO"] + str(r)] = single_df["Country Of Origin Code"].iloc[i]
         ws[column_dict["METAL"] + str(r)] = str(single_df["Metal Quality Code"].iloc[i])
         ws[column_dict["Wt."] + str(r)] = single_df["Fin Metal weight"].iloc[i]
-        
+        # if single_df
+        if "Manufacturing Policy" in single_df.columns:
+            if single_df["Manufacturing Policy"].iloc[i]=='Make-to-Stock':
+                ws[column_dict["Mnf.\nPolicy"] + str(r)] = 'MTS'
+            elif single_df["Manufacturing Policy"].iloc[i]=='Assembly-to-order':
+                ws[column_dict["Mnf.\nPolicy"] + str(r)] = 'ATO'
+            else:
+                ws[column_dict["Mnf.\nPolicy"] + str(r)] = single_df["Manufacturing Policy"].iloc[i]
+
+        else:
+            ws[column_dict["Mnf.\nPolicy"] + str(r)] = None
+        if "AvgOfDuty %" in single_df.columns:
+            ws[column_dict["Duty %"] + str(r)] = single_df["AvgOfDuty %"].iloc[i]
+            ws[column_dict["Duty %"] + str(r)] = f"{single_df['AvgOfDuty %'].iloc[i]}%"
+
+
+        else:
+            ws[column_dict["Duty %"] + str(r)] = None
+            # ws[column_dict["Duty %"] + str(r)] = f"{single_df['AvgOfDuty %'].iloc[i]}%"
+
+
         # Formula for Metal Cost Per Gram using dynamic column and row reference
         ws[column_dict["Metal\nCost\n /Gm"]+str(r)]='=IFERROR(VLOOKUP(' + column_dict["METAL"] + str(r) + '&"", ' + column_dict["Metal\nCost\n /Gm"] + '$1:' + column_dict["METAL\nCOST"] + '$4, 2, 0), "")'
         # Formula for Metal Cost (wt. * Metal Cost Per Gram)
@@ -423,13 +484,16 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         # Filter the metal_df for the current item and add 'inhouse_or_not' based on the 'Supply Policy'
         df_i = metal_df[metal_df.Itemno == single_df["Itemno"].iloc[i]]
         df_i['inhouse_or_not'] = ['YES' if policy == 'IH Assembly' else 'NO' for policy in df_i['Supply Policy']]
-
         s_q = []
+        quantity_column = 'AvgOfQuantity' if 'AvgOfQuantity' in df_i.columns else 'Quantity' 
+        print("df_i",quantity_column)
         for index, row in df_i.iterrows():
-            if row['Item Category Code'] == "DIAM":  
+
+            if row['Item Category Code'] == "DIAM": 
+
                 ws[column_dict["STONE\nTYPE"] + str(c_r)] = row['Item Category Code']
-                ws[column_dict["QTY"] + str(c_r)] = row['AvgOfQuantity']
-                s_q.append(row['AvgOfQuantity'])
+                ws[column_dict["QTY"] + str(c_r)] = row[quantity_column]
+                s_q.append(row[quantity_column])
                 ws[column_dict["wt."] + str(c_r)] = row['AvgOfWeight']
                 ws[column_dict["CODE"] + str(c_r)] = row['Item No_']   
                 ws[column_dict["$ PER \nCT/PC"] + str(c_r)] = row['AvgOfBase Unit Cost (LCY)']
@@ -458,22 +522,22 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
                 ws[column_dict["FINDING\nTYPE"] + str(fin_c)] = row['Item No_']
                 
                 ws[column_dict["FINDING\n(YES/NO)"] + str(fin_c)]='=IF(ISNUMBER(SEARCH("CERT", ' + column_dict["FINDING\nTYPE"] + str(fin_c) + ')), "YES", "NO")'
-                ws[column_dict["FINDING\nQTY"] + str(fin_c)] = row['AvgOfQuantity']
+                ws[column_dict["FINDING\nQTY"] + str(fin_c)] = row[quantity_column]
             
 # ( "=IF("+ column_dict["METAL"] + str(r) + '="S", '  # Check if the Metal column value is "S"
 #     + str(row['AvgOfBase Unit Cost (LCY)']) + "/40*40, "  # If "S", divide by 40 and multiply by 40
 #     + str(row['AvgOfBase Unit Cost (LCY)']) + "/2200*2600)" 
  
                 ws[column_dict["FINDING\nDTL\nCOST"] + str(fin_c)] = ( "=IF("+ column_dict["METAL"] + str(r) + '="S", '  # Check if the Metal column value is "S"
-    + str(row['AvgOfCost Amount (LCY)']) + "/40*$"+column_dict["METAL\nCOST"]+"7"+", "  # If "S", divide by 40 and multiply by 40
-    + str(row['AvgOfCost Amount (LCY)']) + "/2200*"+column_dict["METAL\nCOST"]+"8)"  )
+    + str(row['AvgOfCost Amount (LCY)']) + "/40*$"+column_dict["METAL\nCOST"]+"$7"+", "  # If "S", divide by 40 and multiply by 40
+    + str(row['AvgOfCost Amount (LCY)']) + "/2200*$"+column_dict["METAL\nCOST"]+"$8)"  )
                 
                 fin_c += 1
 
             if row['Item Category Code'] in ["COLOR", "CZ"]:  
                 ws[column_dict["STONE\nTYPE"] + str(c_r)] = row['Item Category Code']
-                ws[column_dict["QTY"] + str(c_r)] = row['AvgOfQuantity']
-                s_q.append(row['AvgOfQuantity'])
+                ws[column_dict["QTY"] + str(c_r)] = row[quantity_column]
+                s_q.append(row[quantity_column])
                 ws[column_dict["wt."] + str(c_r)] = row['AvgOfWeight']
                 ws[column_dict["CODE"] + str(c_r)] = row['Item No_']
                 ws[column_dict["$ PER \nCT/PC"] + str(c_r)] = row['AvgOfBase Unit Cost (LCY)']
@@ -584,9 +648,9 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
 
             
             labour_c=labour_c+1
-    
         ll=ll[ll['visited']==0]
-        for Description,Quantity,UC in zip(list(ll['Description']),ll['Quantity'],ll['SumOfTotal Cost (LCY)']):
+        SumOfTotal_Cost_LCY = 'SumOfTotal Cost (LCY)' if 'SumOfTotal Cost (LCY)' in ll.columns else 'Total Cost (LCY)'
+        for Description,Quantity,UC in zip(list(ll['Description']),ll['Quantity'],ll[SumOfTotal_Cost_LCY]):
             
             ws[column_dict["LABOR TYPE"]+str(labour_c)]=Description
             ws[column_dict["Labour IH COST\nOR NOT\n(YES/NO)"]+str(labour_c)]='=IF(ISNUMBER(SEARCH("NY", ' + column_dict["LABOR TYPE"] + str(labour_c) + ')), "YES", "NO")'
@@ -627,7 +691,6 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["S/H"] + str(r)] = (
             '=ROUND(' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*0.02, 2)'
         )
-        
         # Duty $
         ws[column_dict["Duty $"] + str(r)] = (
             '=ROUND(' + column_dict["STYLE\nTOTAL\nEXCL.IH"] + str(r) + '*' + column_dict["Duty %"] + str(r) + ', 2)'
@@ -638,8 +701,8 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     
 
         
-        ws[column_dict["Duty %"] + str(r)] = None
-        ws[column_dict["LANDED\nTOTAL"] + str(r)] = ('=SUM(' + column_dict["STYLE\nTOTAL"] + str(r) + ',' +    column_dict["S/H"] + str(r) + ',' +   column_dict["Duty $"] + str(r) + ',' +   column_dict["Duty %"] + str(r) + ')')
+       
+        ws[column_dict["LANDED\nTOTAL"] + str(r)] = ('=SUM(' + column_dict["STYLE\nTOTAL"] + str(r) + ',' +    column_dict["S/H"] + str(r) + ',' +   column_dict["Duty $"] + str(r)  + ')')
 
         # ws[column_dict["LANDED\nTOTAL"] + str(r)].number_format = numbers.FORMAT_CURRENCY_USD_SIMPLE
 
@@ -1354,6 +1417,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         "S/H",
         "Duty $",
         "LANDED\nTOTAL",
+
     ]]
     # Iterate through rows and apply dollar format
     for row_idx, row in enumerate(ws.iter_rows(min_row=14, max_row=last_row), start=14):
@@ -1362,12 +1426,20 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
             # Apply dollar format if the value is not zero
             cell.number_format = '"$"#,##0.00'
 
-    three_deicimal = [column_index_from_string(column_dict[col]) for col in ["wt.", "WT.\n Ext."]]
+    three_deicimal = [column_index_from_string(column_dict[col]) for col in ["wt."]]
     for row_idx, row in enumerate(ws.iter_rows(min_row=14, max_row=last_row), start=14):
         for col_idx in three_deicimal:
             cell = ws.cell(row=row_idx, column=col_idx)
             # Apply dollar format to the cell
             cell.number_format = '#,##0.000'
+
+    two_deicimal = [column_index_from_string(column_dict[col]) for col in ["WT.\n Ext."]]
+    for row_idx, row in enumerate(ws.iter_rows(min_row=14, max_row=last_row), start=14):
+
+        for col_idx in two_deicimal:
+            cell = ws.cell(row=row_idx, column=col_idx)
+            # Apply dollar format to the cell
+            cell.number_format = '#,##0.00'
     # Set row height for row 13
     ws.row_dimensions[13].height = 45  # Adjust row height for row 13
 
@@ -1382,7 +1454,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     ws.row_dimensions.group(1, 4, outline_level=1, hidden=True)
     for col in columns_to_hide:
         ws.column_dimensions[column_dict[col]].hidden = True
-    ws.column_dimensions[column_dict["DESCRIPTION"]].width = 40
+    ws.column_dimensions[column_dict["DESCRIPTION"]].width = 50
     ws.column_dimensions[column_dict["Metal\nCost\n /Gm"]].width = 10
     ws.column_dimensions[column_dict["DIA CTTW"]].width = 10
     ws.column_dimensions[column_dict["wt."]].width = 10
@@ -1428,7 +1500,6 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     cell_reference = f"{cell_key}13"       # Combine column with row number
 
     # Apply red font to the cell
-    ws[cell_reference].font = red_font
 
     #hiiden
     ws.column_dimensions.group(
@@ -1448,6 +1519,8 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
 
     # Apply the AutoFilter to the range
     ws.auto_filter.ref = filter_range    
+
+
 
 
 def fill_style_column(sheet, start_row=13, style_column=2):
@@ -1515,6 +1588,8 @@ def adjust_images_with_xlwings(input_file, output_file):
         wb_xlwings.close()
         app.quit()  # Quit the Excel application
         print(f"Excel saved with adjusted images at: {output_file}")
+
+
 
     except Exception as e:
         print(f"An error occurred: {e}")

@@ -1,50 +1,23 @@
 import os
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 import time
 import json 
-from .forecastUtils import process_data
+from .forecastUtils import make_zip_and_delete,process_data,get_previous_retail_week
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import FileResponse
 from rest_framework import status
-import zipfile 
-import shutil
 
 
-def make_zip_and_delete(folder_path):
-        folder_path = os.path.normpath(folder_path)
-        zip_file_path = os.path.normpath(f'{folder_path}.zip')
-        
-        try:
-            # Create a ZIP file
-            with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(folder_path):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, folder_path)  # Preserve folder structure
-                        zipf.write(file_path, arcname)
-            
-            print(f"Folder '{folder_path}' has been compressed into '{zip_file_path}'")
-
-            # Delete the folder after zipping
-            shutil.rmtree(folder_path)
-            print(f"Folder '{folder_path}' has been deleted successfully.")
-        
-        except PermissionError:
-            print(f"Permission denied: Cannot access '{folder_path}'. Please check folder permissions.")
-        except FileNotFoundError:
-            print(f"File not found: '{folder_path}' does not exist.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
-
+previous_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks = get_previous_retail_week()
 
 
 class UploadXlsxAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
- 
+
     def post(self, request):
         try:
             uploaded_file = request.FILES.get('file')

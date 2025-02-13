@@ -1,4 +1,6 @@
 import os 
+import zipfile 
+import shutil
 import datetime
 from calendar import monthrange
 from datetime import datetime,timedelta
@@ -13,6 +15,135 @@ from multiprocessing import Manager, Pool
 import json 
 
 
+def make_zip_and_delete(folder_path):
+    folder_path = os.path.normpath(folder_path)
+    zip_file_path = os.path.normpath(f'{folder_path}.zip')
+    
+    try:
+        # Create a ZIP file
+        with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, folder_path)  # Preserve folder structure
+                    zipf.write(file_path, arcname)
+        
+        print(f"Folder '{folder_path}' has been compressed into '{zip_file_path}'")
+
+        # Delete the folder after zipping
+        shutil.rmtree(folder_path)
+        print(f"Folder '{folder_path}' has been deleted successfully.")
+    
+    except PermissionError:
+        print(f"Permission denied: Cannot access '{folder_path}'. Please check folder permissions.")
+    except FileNotFoundError:
+        print(f"File not found: '{folder_path}' does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+ 
+# Helper function for get_previous_retail_week()
+def get_retail_weeks(year, month):
+    """
+    Calculate the number of retail weeks in a given month.
+    Retail weeks follow the Sunday-to-Saturday structure, 
+    and all days in a week belong to the month in which the week starts.
+    
+    Args:
+        year (int): The year of the month.
+        month (int): The month (1 for January, 12 for December).
+
+    Returns:
+        int: Number of retail weeks in the month.
+    """
+    # Get the first day and last day of the month
+    first_day = datetime(year, month, 1)
+    last_day = datetime(year, month, monthrange(year, month)[1])
+
+    # Find the first Sunday of the month
+    first_sunday = first_day + timedelta(days=(6 - first_day.weekday()) % 7)
+
+    # Find the last Saturday of the month
+    last_saturday = last_day - timedelta(days=last_day.weekday() + 1)
+
+    # Count retail weeks
+    current_week_start = first_sunday
+    week_count = 0
+
+    while current_week_start <= last_saturday:
+        week_count += 1
+        current_week_start += timedelta(days=7)  # Move to the next Sunday
+
+    # Check if the final week starts in the current month (partial week rule)
+    if current_week_start <= last_day:
+        week_count += 1
+
+    return week_count
+
+def get_previous_retail_week():
+    """
+    Get the previous week's month, year of the previous month, 
+    last year's occurrence of that month, last month before the previous month in numeric format,
+    determine SP (Spring) or FA (Fall) based on the previous month,
+    and calculate the number of retail weeks for each month individually.
+    """
+    # Use the current date as input
+    current_date = datetime.now()
+    print(f"Current date: {current_date}")
+
+    # Find the current week's Sunday
+    current_sunday = current_date - timedelta(days=current_date.weekday() + 1)
+
+    # Calculate the previous week's Sunday
+    previous_week_sunday = current_sunday - timedelta(days=7)
+
+    # Determine the previous week number
+    previous_week_number = (previous_week_sunday.day - 1) // 7 + 1
+
+    # Get the month and year of the previous week
+    previous_month = previous_week_sunday.strftime('%b').upper()
+    year_of_previous_month = previous_week_sunday.year
+
+    # Determine last year's occurrence of the same month
+    last_year_of_previous_month = year_of_previous_month - 1
+
+    # Determine the last month before the previous month
+    last_month_of_previous_month_date = previous_week_sunday.replace(day=1) - timedelta(days=1)
+    last_month = last_month_of_previous_month_date.strftime('%b').upper()
+
+    # Custom mapping for months
+    month_mapping = {
+        'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4,
+        'JUN': 5, 'JUL': 6, 'AUG': 7, 'SEP': 8,
+        'OCT': 9, 'NOV': 10, 'DEC': 11, 'JAN': 12
+    }
+    last_month_of_previous_month_numeric = month_mapping[last_month]
+
+    # Determine SP (Spring) or FA (Fall/Winter) based on the previous month
+    spring_months = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
+    fall_months = ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
+
+    season = "SP" if previous_month in spring_months else "FA"
+
+    # Calculate the number of retail weeks for each month of the current year
+    current_year = year_of_previous_month
+    print(current_year)
+    # Individual variables for retail weeks of each month
+
+    feb_weeks = get_retail_weeks(current_year,2)
+    mar_weeks = get_retail_weeks(current_year,3)
+    apr_weeks = get_retail_weeks(current_year,4)
+    may_weeks = get_retail_weeks(current_year,5)
+    jun_weeks = get_retail_weeks(current_year,6)
+    jul_weeks = get_retail_weeks(current_year,7)
+    aug_weeks = get_retail_weeks(current_year,8)
+    sep_weeks = get_retail_weeks(current_year,9)
+    oct_weeks = get_retail_weeks(current_year,10)
+    nov_weeks = get_retail_weeks(current_year,11)
+    dec_weeks = get_retail_weeks(current_year,12)
+    jan_weeks = get_retail_weeks(current_year + 1, 1)  # January belongs to the next year
+
+    return previous_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks
+    # return previous_month, previous_week_number, year_of_previous_month, last_year_of_previous_month, last_month_of_previous_month_numeric, season
 
 def add_dropdown(ws, cell, options):
     # Create a data validation object with the list of options
@@ -54,9 +185,24 @@ def apply_format(ws, cell_ranges, number_format):
             cell = ws[cell_range]
             cell.number_format = number_format
 
+def read_excel_sheet(file_details):
+    file_path, sheet_name, kwargs = file_details
+    return sheet_name, pd.read_excel(file_path, sheet_name=sheet_name, **kwargs)
 
-
-
+# multiprocess pool for reading excel 
+def process_sheet(sheet_name, config, input_path):
+    """
+    Function to process a single sheet with specified configuration.
+    """
+    print(f"Processing sheet: {sheet_name}")
+    try:
+        excel_file = pd.ExcelFile(input_path)
+        data = excel_file.parse(sheet_name=sheet_name, **config)
+        print(f"Finished processing sheet: {sheet_name}")
+        return sheet_name, data
+    except Exception as e:
+        print(f"Error processing sheet {sheet_name}: {e}")
+        return sheet_name, None
 
 # multiprocess pool for generating excel 
 def process_category(args):
@@ -106,7 +252,6 @@ def process_category(args):
     # Placeholder for the processing logic of each category
     # Use the original code logic for processing categories here.
     print(f"Processing Category: {category} with Code: {code} and Num Products: {num_products}")
-   
     data = [
             ["", "TY", year_of_previous_month, "LY", last_year_of_previous_month, "Season", season, "Current Year", "Month", current_month, current_month_number, "Week", previous_week_number, "", "MAY-SEP", "", "", "Last Completed Month", last_month_of_previous_month_numeric, "", "Use EOM Actual?", rolling_method],
             ["", "Count of Items", "", 8215, "", "", "", "Last SP / FA Months", "Month", "Jul", "", "Jan", 12, "Sorted by:", "Dept Grouping >Class ID", "", "", ""],
@@ -128,6 +273,8 @@ def process_category(args):
     notify_macys=[]
     pids_below_door_count = []
 
+
+    # Loop through products to generate PIDs
 
     # Step 4: Populate Worksheet with Data
     for row_num, row_data in enumerate(data, 1):
@@ -576,10 +723,10 @@ def process_category(args):
         def get_lead_time_by_pid(pid_value):
             # Find the Vendor for the given PID
             vendor = master_sheet.loc[master_sheet['PID'] == pid_value, 'Vendor Name'].values[0]
-            #print('vendor',vendor)
+            print('vendor',vendor)
             # Find the Lead Time for the Vendor
             country = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Country of Origin']
-            #print('country',country)
+            print('country',country)
             if not country.empty:
                 country = country.values[0]  # Access the first value
             else:
@@ -593,14 +740,15 @@ def process_category(args):
             if current_month_upper=='MAY' or current_month_upper=='JUN' or current_month_upper=='JULY':
                 if country=='Italy':
                     lead_time=14
+            # lead_time = dynamicLead(current_month_upper, country, lead_time)
             return lead_time 
         
         lead_time = get_lead_time_by_pid(pid_value)
-        #print('lead_time',lead_time) 
-        # Function to get the 3-letter month abbreviation based on the month number
+        print('lead_time',lead_time) 
+            # Function to get the 3-letter month abbreviation based on the month number
         # Retail calendar month sequence
         retail_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
-
+        
         # Print intermediate results for debugging
         def convert_month_to_abbr(full_month):
             # Define mapping of full month names to abbreviations
@@ -622,6 +770,59 @@ def process_category(args):
             # Return the corresponding abbreviation, or None if not found
             return month_mapping.get(full_month, None)
         
+        # def calculate_forecast_months(lead_time_weeks, current_date,current_month):
+        #     # Calculate the lead time in days
+        #     lead_time_days = lead_time_weeks * 7
+            
+        #     # Calculate the forecast date
+        #     forecast_date = current_date + timedelta(days=lead_time_days)
+            
+        #     # Extract the forecast month and year
+        #     forecast_month = forecast_date.strftime("%B")  # Full month name
+        #     forecast_year = forecast_date.year
+        #     forecast_month_abbr = convert_month_to_abbr(forecast_month)
+        #     print("forecast_month ",forecast_month_abbr)
+        #     print("current_month",current_month)  
+
+        #     check = False
+        #     # Calculate the week of the forecast month
+        #     first_day_of_month = forecast_date.replace(day=1)
+        #     days_diff = (forecast_date - first_day_of_month).days
+        #     week_of_forecast_month = math.ceil((days_diff + 1) / 7)  # +1 to include the current day in the week count
+
+        #     if week_of_forecast_month > 3 :
+        #         # Find the index of the last month
+        #         forecast_index = retail_months.index(forecast_month_abbr)                
+        #         # Get the next month (wrap around using modulo)
+        #         forecast_month_abbr = retail_months[(forecast_index + 1) % len(retail_months)]
+        #         check = True
+            
+
+        #     # Calculate the week of the current month
+        #     first_day_of_current_month = current_date.replace(day=1)
+        #     days_diff_current = (current_date - first_day_of_current_month).days
+        #     week_of_current_month = math.ceil((days_diff_current + 1) / 7)
+
+        #     # Define the month names in 3-letter format
+        #     #month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            
+        #     # # Create the list of months
+        #     # start = month_names.index(current_month) + 1
+        #     # end = month_names.index(forecast_month_abbr) + 1
+        #     forecast_month_list =  [forecast_month_abbr]
+
+        
+        #     # Display the result
+        #     print(f"Forecast month is {forecast_month} {forecast_year}")
+        #     print(f"Week of the forecast month: Week {week_of_forecast_month}")
+        #     print(f"Current month is {current_date.strftime('%B')} {current_date.year}")
+        #     print(f"Week of the current month: Week {week_of_current_month}")
+        #     print(f"Forecast months list: {forecast_month_list}")
+
+        #     return forecast_month_list , week_of_forecast_month , forecast_month_abbr , check
+
+        # Get the current date
+
         def calculate_forecast_months(lead_time_weeks, current_date,current_month):
             # Calculate the lead time in days
             lead_time_days = lead_time_weeks * 7
@@ -636,11 +837,15 @@ def process_category(args):
             print("forecast_month ",forecast_month_abbr)
             print("current_month",current_month)  
 
+            check = False
             # Calculate the week of the forecast month
             first_day_of_month = forecast_date.replace(day=1)
             days_diff = (forecast_date - first_day_of_month).days
             week_of_forecast_month = math.ceil((days_diff + 1) / 7)  # +1 to include the current day in the week count
 
+            if week_of_forecast_month > 2 :
+                check = True
+            
             # Calculate the week of the current month
             first_day_of_current_month = current_date.replace(day=1)
             days_diff_current = (current_date - first_day_of_current_month).days
@@ -654,7 +859,7 @@ def process_category(args):
             # end = month_names.index(forecast_month_abbr) + 1
             forecast_month_list =  [forecast_month_abbr]
 
-
+        
             # Display the result
             print(f"Forecast month is {forecast_month} {forecast_year}")
             print(f"Week of the forecast month: Week {week_of_forecast_month}")
@@ -662,16 +867,19 @@ def process_category(args):
             print(f"Week of the current month: Week {week_of_current_month}")
             print(f"Forecast months list: {forecast_month_list}")
 
-            return forecast_month_list , week_of_forecast_month , forecast_month
+            return forecast_month_list , week_of_forecast_month , forecast_month_abbr , check
 
-        # Get the current date
-        current_date = datetime.today()
+        #current_date = datetime.today()
+        current_date= datetime(2025,1,23)
         if math.isnan(lead_time):
             lead_time = 8
-   
-        forecast_months ,week_of_forecast_month ,forecast_month = calculate_forecast_months(lead_time,current_date,current_month)
 
+        forecast_months ,week_of_forecast_month ,forecast_month, check = calculate_forecast_months(lead_time,current_date,current_month)
+        #forecast_months = calculate_forecast_months(lead_time,current_date)
+        #print('forecast_months',forecast_months)
         
+        #############################print(madhavee)
+        retail_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
         #Step 2 :  Find STD period###################
         def get_std_months(current_month):
             # Retail calendar month sequence
@@ -699,34 +907,8 @@ def process_category(args):
                 std_months.insert(0, retail_months[std_index])  # Insert at the beginning to maintain order
             
             return std_months
-
-        
-        months_new = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
-        
-        
-        def get_month_range(months, month_start, endMonth):
-            # Find the start and end indices in the months list
-            start_index = months.index(month_start)
-            end_index = months.index(endMonth)
-        
-            # Handle the circular nature of the list
-            if end_index < start_index:
-                # Rolling over to the next year
-                selected_months = months[start_index:] + months[:end_index + 1]
-            else:
-                # Normal range
-                selected_months = months[start_index:end_index + 1]
-        
-            return selected_months
-        
-        if month_from and month_to:
-            first_month_std=convert_month_to_abbr(month_from).upper()
-            last_mont_std=convert_month_to_abbr(month_to).upper()
-            std_months = get_month_range(months_new, first_month_std, last_mont_std)
-        else:
-            std_months = get_std_months(current_month)
-
-        #print(std_months)
+        std_months = get_std_months(current_month)
+        print(std_months)
         std_months_upper = [month.upper() for month in std_months]
         # TY_Unit_Sales_list=[TY_Unit_Sales['FEB'],TY_Unit_Sales['MAR'],TY_Unit_Sales['APR'],TY_Unit_Sales['MAY'],TY_Unit_Sales['JUN'],TY_Unit_Sales['JUL'],TY_Unit_Sales['AUG'],TY_Unit_Sales['SEP'],TY_Unit_Sales['OCT'],TY_Unit_Sales['NOV'],TY_Unit_Sales['DEC'],TY_Unit_Sales['JAN']]
         STD_TY_Unit_Sales_list = [TY_Unit_Sales[month] for month in std_months_upper]
@@ -739,20 +921,17 @@ def process_category(args):
         else:
             month_12_fc_index = 0
         STD_index_value=round(STD_index_value, 2)
-        #print("STD Index:", STD_index_value)
-        #print("Month 12 FC:", month_12_fc_index)
+        print("STD Index:", STD_index_value)
+        print("Month 12 FC:", month_12_fc_index)
 
         if STD_LY_Unit_Sales_list:
             std_trend = (sum(STD_TY_Unit_Sales_list) - sum(STD_LY_Unit_Sales_list)) / sum(STD_LY_Unit_Sales_list)
         else:
             std_trend = 0
-
         std_trend=round(std_trend, 2)
-        #print("std_trend:", std_trend)
+        print("std_trend:", std_trend)
         # Get the door count from cell C10
-
         retail_months_upper = [month.upper() for month in retail_months]
-
         def check_product_type( ):
             
             All_TY_Unit_Sales_list=[LY_Unit_Sales[month] for month in retail_months_upper]
@@ -762,28 +941,28 @@ def process_category(args):
                 for ly_mcom, ty_unit in zip(ALL_LY_MCOM_Unit_Sales, All_TY_Unit_Sales_list)
             ]
             # Get the COM to TTL % Sales for this year (from I20 to T20)
-    
+
             # Calculate the average COM to TTL % Sales for this year
             average = sum(result_list) / len(result_list) if result_list else 0 
             average_com_to_ttl_sales=average*100
-    
+
             # Determine if the product is COM or Store based on door count and COM to TTL % Sales
             if KPI_Door_count is None or  KPI_Door_count <= 1 or average_com_to_ttl_sales > 65 or None:
                 return True
             else:
                 return False
-    
+
         is_com_product = check_product_type()
                 
-            # #print the result
-        #print("Is COM Product:", is_com_product)
+            # Print the result
+        print("Is COM Product:", is_com_product)
         if not is_com_product:
             store_products.append(pid_value) 
 
             # #############################################
             # #############       step 5       ############      
             # #############################################
-    
+
             STD_TY_OH_Units_list = [TY_OH_Units[month] for month in std_months_upper]
             STD_TY_OH_MCOM_Units_list=[TY_OH_MCOM_Units[month] for month in std_months_upper]
 
@@ -858,14 +1037,16 @@ def process_category(args):
 
             fc_by_index = spring_fc_by_index_all if selected_season == "Spring" else fall_fc_by_index_all
             fc_by_trend = spring_fc_by_trend_all if selected_season == "Spring" else fall_fc_by_trend_all
-            #print('selected_season',selected_season)
-            #print('fc_by_index',fc_by_index)
-            #print('fc_by_trend',fc_by_trend)
+            print('selected_season',selected_season)
+            print('fc_by_index',fc_by_index)
+            print('fc_by_trend',fc_by_trend)
 
             if fc_by_index is not None and fc_by_trend is not None:
                 difference = (abs(fc_by_trend - fc_by_index) / max(fc_by_index,fc_by_trend))* 100 
-
-            #print('difference',difference)
+            print('difference',difference)
+            
+            trend_difference = (abs(fc_by_trend - fc_by_index) / max(fc_by_index,fc_by_trend))* 100 
+            print('difference',difference)
 
             def find_forecasting_method_index(difference, door_count, this_year_std_store_eom_oh, month_12_fc_index):
                 # Check if the difference is more than 15%
@@ -892,19 +1073,19 @@ def process_category(args):
                     forecasting_method = "FC by Index"  # Write the value to the merged cell
                 else:
 
-                    forecasting_method = "FC by Index"  # Write the value to the merged cell
+                    forecasting_method = "Average"  # Write the value to the merged cell
                 return  forecasting_method  ,  month_12_fc_index
 
 
 
-            def find_forecasting_method_trend(difference):
+            def find_forecasting_method_trend(difference,month_12_fc_index):
                     # Check if the difference is more than 15%
-                    if difference > 15:            
+                    if difference > 15:  
                         forecasting_method = "FC by Trend"  # Write the value to the merged cell
             
                     else:
                         forecasting_method = "Average"  # Write the value to the merged cell
-                    return  forecasting_method
+                    return  forecasting_method,month_12_fc_index
             
             def find_method(difference,this_year_std_store_eom_oh, last_year_std_store_eom_oh, door_count, month_12_fc_index):
                 # Define the threshold percentage for "maintained"
@@ -919,37 +1100,49 @@ def process_category(args):
                 last_year_maintained = is_maintained(last_year_std_store_eom_oh)
                 this_year_maintained = is_maintained(this_year_std_store_eom_oh)
         
-                #print("last year_maintained ", last_year_maintained)
-                #print("this year maintained ", this_year_maintained)
-    
+                print("last year_maintained ", last_year_maintained)
+                print("this year maintained ", this_year_maintained)
+
                 # Now check the three conditions:
                 if last_year_maintained and this_year_maintained:
                     # "Last Year => Store EOM OH not maintained, This Year => Store EOM OH not maintained"
-                    forecasting_method=find_forecasting_method_trend(difference)
+                    forecasting_method,month_12_fc_index=find_forecasting_method_trend(difference,month_12_fc_index)
                 else:
                     forecasting_method , month_12_fc_index=find_forecasting_method_index(difference, door_count, this_year_std_store_eom_oh, month_12_fc_index)
                 return forecasting_method , month_12_fc_index
+
             forecasting_method , month_12_fc_index=find_method(difference,this_year_std_store_eom_oh, last_year_std_store_eom_oh, KPI_Door_count, month_12_fc_index)
-            #print('forecasting_method',forecasting_method)
-            #print('month_12_fc_index',month_12_fc_index)
+            print('forecasting_method',forecasting_method)
+            print('month_12_fc_index',month_12_fc_index)
+
+            if forecasting_method == "FC by Trend":
+                if difference > 20:
+                    if fc_by_trend > fc_by_index and Own_Retail > 1000:
+                        std_trend = 0
+                        f8 = 0
+                        print("********************************",f8)
+                        fc_by_trend_all = calculate_column_values(s1, k1, retail_months_upper, f8, row4_values, row17_values, row39_values)
+
+
+
             # Preprocess the dictionaries to replace NaN or Infinity with 0
             fc_by_index_all = {key: (value if not (math.isnan(value) or math.isinf(value)) else 0) for key, value in fc_by_index_all.items()}
             fc_by_trend_all = {key: (value if not (math.isnan(value) or math.isinf(value)) else 0) for key, value in fc_by_trend_all.items()}
-
+            
             # Compute the average
             fc_by_average_all = {
                 key: round((fc_by_index_all[key] + fc_by_trend_all[key]) / 2) for key in fc_by_trend_all
             }
-            #print('fc_by_trend_all',fc_by_trend_all)
-            #print('fc_by_index_all',fc_by_index_all)
-            #print('fc_by_average_all',fc_by_average_all)
+            print('fc_by_trend_all',fc_by_trend_all)
+            print('fc_by_index_all',fc_by_index_all)
+            print('fc_by_average_all',fc_by_average_all)
             if forecasting_method == "FC by Index":
                 recommended_fc = fc_by_index_all
             elif forecasting_method == "FC by Trend":
                 recommended_fc = fc_by_trend_all
             else:
                 recommended_fc = fc_by_average_all
-            #print("recommended_fc ",recommended_fc)
+            print("recommended_fc ",recommended_fc)
 
             current_month_upper = current_month.upper()
                     # Define input data for each row
@@ -959,7 +1152,7 @@ def process_category(args):
             row_43 = LY_OH_Units
             # Define variables
             V1 = rolling_method  
-            #print('rolling_method',rolling_method) # Example: could be "YTD", "CURRENT MTH", "SPRING", etc.
+            print('rolling_method',rolling_method) # Example: could be "YTD", "CURRENT MTH", "SPRING", etc.
             K1 = current_month_number       # A reference column value (e.g., month or index)
             # List of columns (iterable from I to T in your example)
             
@@ -986,47 +1179,49 @@ def process_category(args):
                     planned_fc[col] = J43
                 else:
                     planned_fc[col] = J9
+
+
             current_month_upper = current_month.upper()
-            # #print the results dictionary
-            #print("planned_fc:", planned_fc)
-            #print("This Year sales",TY_Unit_Sales)
-            current_month_sales_percentage = int(percentage)
+            # Print the results dictionary
+            print("planned_fc:", planned_fc)
+            print("This Year sales",TY_Unit_Sales)
+            current_month_sales_percentage = 25
             current_month_upper = current_month.upper()
-            planned_fc[current_month_upper] =  round(planned_fc[current_month_upper] / (current_month_sales_percentage/100))
-            #print("planned_fc_current%_re",planned_fc)
+            planned_fc[current_month_upper] =  round(TY_Unit_Sales[current_month_upper] / (current_month_sales_percentage/100))
+            print("planned_fc_current%_re",planned_fc)
             #compare
             forecast_months_upper = [month.upper() for month in forecast_months]
-            if forecasting_method=="FC by Trend" or forecasting_method=="Average":
+            # if forecasting_method=="Average":
                 
-                trend_std={key:fc_by_trend_all[key] for key in forecast_months_upper}
-                avg_std={key:fc_by_average_all[key] for key in forecast_months_upper}
-                last_year_std={key:LY_Unit_Sales[key] for key in forecast_months_upper}
-                #print("last_year sales unit for forecast month",last_year_std)
-                for key in last_year_std.keys():
-                    if key in trend_std and key in avg_std:
-                        # Calculate the difference from last_year_std
-                        trend_diff = abs(trend_std[key] - last_year_std[key])
-                        avg_diff = abs(avg_std[key] - last_year_std[key])
+            #     trend_std={key:fc_by_trend_all[key] for key in forecast_months_upper}
+            #     avg_std={key:fc_by_average_all[key] for key in forecast_months_upper}
+            #     last_year_std={key:LY_Unit_Sales[key] for key in forecast_months_upper}
+            #     print("last_year sales unit for forecast month",last_year_std)
+            #     for key in last_year_std.keys():
+            #         if key in trend_std and key in avg_std:
+            #             # Calculate the difference from last_year_std
+            #             trend_diff = abs(trend_std[key] - last_year_std[key])
+            #             avg_diff = abs(avg_std[key] - last_year_std[key])
 
-                        # Find the closest value
-                        closest_value = trend_std[key] if trend_diff < avg_diff else avg_std[key]
+            #             # Find the closest value
+            #             closest_value = trend_std[key] if trend_diff < avg_diff else avg_std[key]
 
-                        # Update planned_fc
-                        planned_fc[key] = closest_value
+            #             # Update planned_fc
+            #             planned_fc[key] = closest_value
 
-                    # #print updated planned_fc
-            #print('planned_fc_comprewithlast',planned_fc)
+            # Print updated planned_fc
+            print('planned_fc_comprewithlast',planned_fc)
             currnt_month=current_month_upper
             D13 = OO  # Replace with your value for D13
             E19 = nav_OO  # Replace with your value for E19
             in_transit=0 if D13 - E19 < 0 else D13 - E19
-            #print("in_transit",in_transit)
+            print("in_transit",in_transit)
             # Calculate using the logic in the Excel formula
             planned_shp=[Nav_Feb,Nav_Mar,Nav_Apr,Nav_May,Nav_Jun,Nav_Jul,Nav_Aug,Nav_Sep,Nav_Oct,Nav_Nov,Nav_Dec,Nav_Jan]
             planned_shp={key:planned_shp[i] for i,key in enumerate(retail_months_upper)}
-            #print('planned_shp',planned_shp)
+            print('planned_shp',planned_shp)
             planned_shp[current_month_upper] += in_transit
-            #print('planned_shpadd_in_trasit',planned_shp)
+            print('planned_shpadd_in_trasit',planned_shp)
             v1=rolling_method
             k1=current_month_number
             i4=row_4
@@ -1041,7 +1236,7 @@ def process_category(args):
             row_43=LY_OH_Units
 
             row_17=TY_Unit_Sales
-            # Create a dictionary for Birthstones and corresponding months based on the Birthstone sheet
+                    # Create a dictionary for Birthstones and corresponding months based on the Birthstone sheet
             # Initialize output dictionary for Planned EOH (Cal)
 
             # Loop through months
@@ -1053,7 +1248,7 @@ def process_category(args):
                 # Rearrange month_order to start with the current_month
                 start_idx = month_order.index(current_month)
                 reordered_months = month_order[start_idx:] + month_order[:start_idx]
-            
+                print("reordered_months",reordered_months)
                 # Initialize the output dictionary for row_12
                 plan_oh = {}
             
@@ -1073,31 +1268,56 @@ def process_category(args):
                     # Get the previous column's value
                     prev_col12 = plan_oh.get(prev_month, 0)
                     prev_col21 = row_21.get(prev_month, 0)
-            
+                    # print("v1",v1)
+                    # print("k1",k1)
+                    # print("col4",col4)
                     # Apply the logic for calculation
-                    if v1 == "Current Mth" and k1 == col4 and col4 == 1:
+                    if v1 == "Current MTH" and k1 == col4 and col4 == 1:
                         val = row_43['JAN'] + col11 + col37 - col10
-                    elif v1 == "Current Mth" and k1 == col4:
+                        # print("condition1")
+                    elif v1 == "Current MTH" and k1 == col4:
+                        # print("col21",col21)
+                        # print("col11",col11)
+                        # print("col10",col10)
+                        # print("col17",col17)
                         val = col21 + col11 - (col10 - col17)
-                    elif v1 == "Current Mth" and col4 == 1 and k1 > 1:
+                        # print("condition2")
+                    elif v1 == "Current MTH" and col4 == 1 and k1 > 1:
+                        # print("condition3")
                         val = plan_oh['JAN'] + col11 - col10
                     elif v1 == "YTD" and col4 < k1:
+                        # print("condition3")
                         val = col21
                     elif v1 == "Spring" and col4 < 7:
+                        # print("condition4")
                         val = col21
                     elif v1 == "Fall" and col4 > 6 and col4 < k1:
+                        # print("condition5")
                         val = col21
                     elif v1 == "Fall" and col4 == 1 and k1 > 1:
+                        # print("condition6")
                         val = plan_oh['JAN'] + col11 - col10
                     elif v1 == "Fall" and col4 > 6 and col4 == k1:
+                        # print("condition7")
                         val = prev_col21 + col37 + col11 - col10
                     elif v1 == "LY Fall" and col4 > 6:
+                        # print("condition8")
                         val = col43
                     elif col4 == 1 and v1 == "LY FALL":
+                        # print("condition9")
                         val = row_43['JAN'] + col11 + col11 - col10
                     elif col4 == k1 and col4 > 1:
+                        # print("condition10")
+                        # print("prev_col21",prev_col21)
+                        # print("col37",col37)
+                        # print("col11",col11)
+                        # print("col10",col10)
                         val = prev_col21 + col37 + col11 - col10
                     else:
+                        # print("condition11")
+                        # print("prev_col12",prev_col12)
+                        # print("col11",col11)
+                        # print("col10",col10)
                         val = prev_col12 + col11 - col10
             
                     # Store the calculated value in row_12 for the current month
@@ -1105,10 +1325,8 @@ def process_category(args):
             
                 return plan_oh  
             plan_oh = calculate_row_12(v1, k1, i4, row_10, row_11, row_21, row_37, row_43, row_17, current_month_upper)
-            #print('plan_eoh',plan_oh)
+            print('plan_eoh',plan_oh)
             required_quantity_month_dict = {}
-
-            # #print intermediate results for debugging
 
 
             # Check if the filtered DataFrame is not empty
@@ -1118,14 +1336,14 @@ def process_category(args):
                 bsp_or_not = str(bsp_or_not).strip().upper() if bsp_or_not else None
                 # Step 2: Determine BSP_status
                 bsp_status = 'BSP' if bsp_or_not == 'BSP' else 'non_bsp'
-                #print('bsp_status',bsp_status)
+                print('bsp_status',bsp_status)
                 # Step 3: Find birthstone_month if BSP
                 birthstone_month = None
                 if bsp_status == 'BSP':
                     category_bsp=bsp_row['category'].iloc[0]
                     birthstone = bsp_row['Birthstone'].iloc[0] if bsp_or_not == 'BSP' else None
-                    #print('category_bsp',category_bsp)
-                    #print('birthstone',birthstone)
+                    print('category_bsp',category_bsp)
+                    print('birthstone',birthstone)
                     birthstone = str(birthstone).strip() 
                     birthstone_sheet = birthstone_sheet.dropna(subset=['Birthstone'])
                     birthstone_sheet['Birthstone'] = birthstone_sheet['Birthstone'].astype(str)
@@ -1133,7 +1351,7 @@ def process_category(args):
 
                     if not birthstone_row.empty:
                         birthstone_month = birthstone_row['Month Name'].iloc[0]
-                        #print('birthstone_month',birthstone_month)
+                        print('birthstone_month',birthstone_month)
                     if birthstone_month:
                         # Determine the previous month of the birthstone month
                         months_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -1142,7 +1360,7 @@ def process_category(args):
                         # Check if the previous month is in the forecast months
                         for month in forecast_months:
 
-                            #print(f"Processing forecast month: {month}")
+                            print(f"Processing forecast month: {month}")
                             if month == previous_month or month == 'Nov':  # Apply special condition for November
                                 if category == 'Studs':
                                     required_quantity = 3 * KPI_Door_count  # For Studs, use 3 per door count
@@ -1154,15 +1372,19 @@ def process_category(args):
 
                             # Store the result in the dictionary
                             required_quantity_month_dict[month] = required_quantity
-                            #print(f"if  bsp Updated dictionary: {required_quantity_month_dict}")
+                            print(f"if  bsp Updated dictionary: {required_quantity_month_dict}")
                     # Fallback: Populate the dictionary with `forecast_months` and `door_count`
             if not required_quantity_month_dict:
-                #print(f"PID not found or no BSP logic executed. Populating default values...")
+                print(f"PID not found or no BSP logic executed. Populating default values...")
                 for month in forecast_months:
                     required_quantity_month_dict[month] = KPI_Door_count
-            #print(f"Updatedf required_quantity_month_dict: {required_quantity_month_dict}")
+            print(f"Updatedf required_quantity_month_dict: {required_quantity_month_dict}")
 
+            
             required_quantity_month_dict = {key.upper(): value for key, value in required_quantity_month_dict.items()}
+
+
+            #####################print("Madhavee")
 
             ly_com_eom_oh=[LY_MCOM_OH_Units[month] for month in ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL','AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']]
             print('lastyear avg COM EOM OH for forecast month ',ly_com_eom_oh)
@@ -1192,6 +1414,8 @@ def process_category(args):
                 )          
             print("Updated final required_quantity_month_dict",required_quantity_month_dict)
 
+            #####################print("Madhavee")
+
             total_gross_projection_added = 0
             for i, month in enumerate(forecast_months_upper):
                 # Step 1: Check if planned_oh for the month is less than the required quantity for that month
@@ -1212,16 +1436,11 @@ def process_category(args):
                 else:
                     print(f"No update needed for {month} as planned_oh is greater than required quantity.")
         
-                if i+1 <= len(forecast_months_upper)-1:
-                    next_month = forecast_months_upper[i+1]
-                    # Update planned_oh for next month using the formula
-                    print("Next month:", next_month)
-                    plan_oh[next_month] = (planned_shp[next_month] + plan_oh[month]) - planned_fc[next_month]
-                    print(f"Updated planned_oh for {next_month}: {plan_oh[next_month]}")
-
+            plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shp, row_21, row_37, row_43, row_17, current_month_upper)
+            print('plan_eoh',plan_oh)
             print("week_of_forecast_month" ,week_of_forecast_month)
-            if week_of_forecast_month > 2:
-                
+
+            if check == True:                    
                 print("forecast_month list: ",forecast_months)
                 last_forecast_month = forecast_months[-1] 
                 # Find the index of the last month
@@ -1232,12 +1451,16 @@ def process_category(args):
                 last_forecast_month = last_forecast_month.upper()
                 next_forecast_month = next_forecast_month.upper()
                 plan_oh[next_forecast_month] = (planned_shp[next_forecast_month] + plan_oh[last_forecast_month]) - planned_fc[next_forecast_month]
-                if plan_oh[next_forecast_month] < KPI_Door_count:
-                    difference = KPI_Door_count - plan_oh[next_forecast_month] 
+                required_quantity_for_next_month = KPI_Door_count + average_com_eom_oh
+                if plan_oh[next_forecast_month] < required_quantity_for_next_month:
+                    difference = required_quantity_for_next_month - plan_oh[next_forecast_month] 
                     planned_shp[last_forecast_month] += difference
                     total_gross_projection_added += difference
                     pids_below_door_count.append(pid_value)
-            
+
+            plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shp, row_21, row_37, row_43, row_17, current_month_upper)
+            print('plan_eoh',plan_oh)
+
             def calculate_week_and_month(start_month_abbr, start_week, year, weeks_to_add):
                 # Map abbreviated month names to their respective numbers
                 month_map = {
@@ -1276,7 +1499,7 @@ def process_category(args):
             
                 # Convert the month number to its abbreviation
                 target_month_abbr = target_date.strftime("%b")
-             
+                
                 return target_month_abbr,target_week
         
             year = 2025               # Year
@@ -1309,9 +1532,7 @@ def process_category(args):
             holiday_name,check_is_holiday = check_holiday(target_month_abbr, target_week)
             print(f"The holiday in {target_month_abbr} week {target_week} is: {holiday_name}")
             first_forecast_month = forecast_months_upper[0]
-            if check_is_holiday:
-                
-                
+            if check_is_holiday:                    
                 if category == "Men's" and holiday_name in ["father_day", "men_day"]:
                     planned_shp[first_forecast_month] += (required_quantity_month_dict[first_forecast_month] * 1.15)
                     total_gross_projection_added += (required_quantity_month_dict[first_forecast_month] * 1.15)
@@ -1324,6 +1545,9 @@ def process_category(args):
             if total_gross_projection_added < Min_order:
                 planned_shp[first_forecast_month] = Min_order
 
+            plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shp, row_21, row_37, row_43, row_17, current_month_upper)
+            print('plan_eoh',plan_oh)
+
             print("Min_order", Min_order)
             print("total_gross_projection",total_gross_projection_added)
             # Print final values for verification
@@ -1331,42 +1555,109 @@ def process_category(args):
             print("Final planned_oh:", plan_oh)
             print("Final gross_projection:", planned_shp)
 
-            
+
+            def calculate_store_sale_thru(TY_Unit_Sales, TY_MCOM_Unit_Sales, TY_OH_Units, TY_OH_MCOM_Units):
+                months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+                store_sell_thru = {}
+                for month in months:
+                    numerator = TY_Unit_Sales[month] - TY_MCOM_Unit_Sales[month]
+                    denominator = numerator + (TY_OH_Units[month] - TY_OH_MCOM_Units[month])
+                    store_sell_thru[month] =numerator / denominator if denominator != 0 else 0
+                return store_sell_thru
+
+            store_sell_thru = calculate_store_sale_thru(TY_Unit_Sales, TY_MCOM_Unit_Sales, TY_OH_Units, TY_OH_MCOM_Units)
+            # Compute the average
+            average_store_sale_thru = sum(store_sell_thru.values()) / len(store_sell_thru)
+
+            print("Store Sale Thru:", store_sell_thru)
+            print("Average Store Sale Thru:", average_store_sale_thru)
+
+            threshold = 0.95  # 5% difference
+            # Function to calculate the average of a list and check if it's maintained
+            def is_maintained(eom_oh_list):
+                average_eom_oh = sum(eom_oh_list) / len(eom_oh_list) if eom_oh_list else 0
+                # Check if the average is within the 5% down range or more than the door count
+                return (average_eom_oh >= threshold * KPI_Door_count) or (average_eom_oh > KPI_Door_count) 
+    
+            # Check if this year's and last year's Store EOM OH are maintained
+            last_year_maintained = is_maintained(last_year_std_store_eom_oh)
+            this_year_maintained = is_maintained(this_year_std_store_eom_oh)
+    
+            print("last year_maintained ", last_year_maintained)
+            print("this year maintained ", this_year_maintained)
+
+
+
             planned_shipments = planned_shp
             macys_proj_receipt=[Macys_Proj_Receipts_Feb,Macys_Proj_Receipts_Mar,Macys_Proj_Receipts_Apr,Macys_Proj_Receipts_May,Macys_Proj_Receipts_Jun,Macys_Proj_Receipts_Jul,Macys_Proj_Receipts_Aug,Macys_Proj_Receipts_Sep,Macys_Proj_Receipts_oct,Macys_Proj_Receipts_Nov,Macys_Proj_Receipts_Dec,Macys_Proj_Receipts_Jan]
             macys_proj_receipt={key:macys_proj_receipt[i] for i,key in enumerate(retail_months_upper)}
             omni_receipts=TY_Receipts
-            
+            spring_months_upper = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
+            fall_months_upper = [ 'AUG', 'SEP', 'OCT', 'NOV', 'DEC','JAN']
+            print(macys_proj_receipt)
+            print(spring_months)
             # 3) Write a helper function to sum a dictionary's values by season
             def season_sum(data_dict, season_months):
                 return sum(data_dict.get(month, 0) for month in season_months)
             
             # 4) Calculate sums for each season
             # --- Spring ---
-            planned_spring = season_sum(planned_shipments, spring_months)
-            omni_spring    = season_sum(omni_receipts, spring_months)
-            macys_spring   = season_sum(macys_proj_receipt, spring_months)
+            planned_spring = season_sum(planned_shipments, spring_months_upper)
+            omni_spring    = season_sum(omni_receipts, spring_months_upper)
+            macys_spring   = season_sum(macys_proj_receipt, spring_months_upper)
             
             # --- Fall ---
-            planned_fall = season_sum(planned_shipments, fall_months)
-            omni_fall    = season_sum(omni_receipts, fall_months)
-            macys_fall   = season_sum(macys_proj_receipt, fall_months)
-            
+            planned_fall = season_sum(planned_shipments, fall_months_upper)
+            omni_fall    = season_sum(omni_receipts, fall_months_upper)
+            macys_fall   = season_sum(macys_proj_receipt, fall_months_upper)
+
+            fcm = forecast_months[0]
+
+            # Now check the three conditions:
+            if last_year_maintained and this_year_maintained and average_store_sale_thru > 0.10 :
+                if fcm == "Apr":
+                    macys_spring_75 = macys_spring * 0.75
+                    print("macys_spring_75",macys_spring_75)
+                    feb_mar_apr_gross_projection = planned_shipments["FEB"] + planned_shipments["MAR"] +  planned_shipments["APR"]
+                    print("feb_mar_apr_gross_projection",feb_mar_apr_gross_projection)
+                    if feb_mar_apr_gross_projection < macys_spring_75:
+                        print(macys_spring_75 - feb_mar_apr_gross_projection)
+                        print(planned_shipments['APR'])
+                        planned_shipments['APR'] += macys_spring_75 - feb_mar_apr_gross_projection
+                if fcm == "Jul":
+                    spring_gross_projection = planned_shipments["FEB"] + planned_shipments["MAR"] +  planned_shipments["APR"] +planned_shipments["MAY"] + planned_shipments["JUN"] +  planned_shipments["JUL"]
+                    if spring_gross_projection < macys_spring:
+                        planned_shipments['JUL'] += macys_spring - spring_gross_projection
+                if fcm == "Oct":
+                    macys_fall_75 = macys_fall * 0.75
+                    aug_sep_oct_gross_projection = planned_shipments["AUG"] + planned_shipments["SEP"] +  planned_shipments["OCT"]
+                    if aug_sep_oct_gross_projection < macys_fall_75:
+                        planned_shipments['OCT'] += macys_fall_75 - aug_sep_oct_gross_projection
+                if fcm == "Jan":
+                    fall_gross_projection = planned_shipments["AUG"] + planned_shipments["SEP"] +  planned_shipments["OCT"] +planned_shipments["NOV"] + planned_shipments["DEC"] +  planned_shipments["JAN"]
+                    if fall_gross_projection < macys_fall:
+                        planned_shipments['JAN'] += macys_fall - fall_gross_projection
+
+            print(planned_shipments)
+            plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shipments, row_21, row_37, row_43, row_17, current_month_upper)
+            print('plan_eoh',plan_oh)
+            print("planned_shp",planned_shipments)
             # 5) Calculate the combined (planned + omni) for each season
             combined_spring = planned_spring + omni_spring
             combined_fall   = planned_fall + omni_fall
             # 6) Compare Macys Projection vs. the Combined Total
-            #    If Macys Projection is less than the combined total, #print a warning
+            #    If Macys Projection is less than the combined total, print a warning
             if macys_spring < combined_spring or macys_fall < combined_fall:
-                notify_macys.appned[pid_value]
+                notify_macys.append(pid_value)
             
-            # 7) Optional: #print out all the final values to see at a glance
-            #print("\n--- Season Summaries ---")
-            #print(f"Planned Shipments Spring: {planned_spring}, Fall: {planned_fall}")
-            #print(f"Omni Receipts Spring:    {omni_spring},    Fall: {omni_fall}")
-            #print(f"Macys Receipts Spring:   {macys_spring},   Fall: {macys_fall}")
-            #print(f"Combined Spring:         {combined_spring}")
-            #print(f"Combined Fall:           {combined_fall}")
+            # 7) Optional: Print out all the final values to see at a glance
+            print("\n--- Season Summaries ---")
+            print(f"Planned Shipments Spring: {planned_spring}, Fall: {planned_fall}")
+            print(f"Omni Receipts Spring:    {omni_spring},    Fall: {omni_fall}")
+            print(f"Macys Receipts Spring:   {macys_spring},   Fall: {macys_fall}")
+            print(f"Combined Spring:         {combined_spring}")
+            print(f"Combined Fall:           {combined_fall}")
+            
         dynamic_formulas = {
             f"G{start_row + 34}": g_value,
             f"F{start_row + 1}": f"=C{start_row + 1}",
@@ -2892,20 +3183,34 @@ def process_category(args):
     }
     return result
 
-
-
-
-from .Utils.readExcel import create_df
-from .Utils.filterDataframe import filter_df
-from .Utils.createMasterDF import create_master_df
-from .Utils.static import birthstone_data,data,month_dict
-from .Utils.retailWeeks import get_previous_retail_week
+def convert_to_tuples(categories):
+    return [(category['name'], category['value']) for category in categories]
 
 def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple):
 
     print("input_path------>",input_path)
 
-    dataframes = create_df(input_path)
+    sheet_config = {
+        "Index": {"usecols": "A:P", "nrows": 41, "header": 2},
+        "report grouping": {"header": None},
+        "Repln Items": {"header": 2},
+        "Setup Sales -L3M & Future": {"header": 9},
+        "Macys Recpts": {"header": 1},
+        "All_DATA": {"header": 0},
+        "MCOM_Data": {"header": 0},
+    }
+
+    # Create a multiprocessing pool
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        # Prepare arguments for multiprocessing
+        pool_args = [(sheet_name, config, input_path) for sheet_name, config in sheet_config.items()]
+        
+        # Process each sheet in parallel
+        output = pool.starmap(process_sheet, pool_args)
+
+    # Collect results into a dictionary
+    dataframes = {sheet_name: data for sheet_name, data in output if data is not None}
+    print("All sheets processed successfully!")
 
     # Store the results into specified variables
     index_df = dataframes.get("Index")
@@ -2932,13 +3237,317 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
     if MCOM_Data is not None:
         print(f"MCOM_Data sheet processed with {len(MCOM_Data)} rows.")
 
+    #make master sheet# Specify the columns you want to extract
+    columns_to_extract = [
+        'PID', 'Cross ref', 'Sort', 'Dpt ID', 'Dpt Desc', 'Mkst', 'PID Desc',
+        'CL ID', 'Class Desc', 'SC ID', 'SC Desc', 'MstrSt ID', 'Masterstyle Desc',
+        'TY Last Cost', 'Own Retail', 'AWR 1st Tkt Ret', 'Prod Desc', 'Grouping',
+        'Vendor', 'Vendor Name', 'FC Index', 'FLDC','Safe/Non-Safe', 'Item Code'
+    ]
 
-    df_filtered = filter_df(planning_df)
+    # Extract the specified columns
+    df_filtered = planning_df[columns_to_extract]
 
-    birthstone_sheet, master_sheet, vendor_sheet = create_master_df(df_filtered,birthstone_data,data)
+    # Create a new 'Gender' column based on the conditions
+    df_filtered['Gender'] = 'Women'  # Default value
+    df_filtered.loc[df_filtered['Dpt ID'].isin([768, 771]), 'Gender'] = 'Men'
+    df_filtered.loc[df_filtered['CL ID'] == 86, 'Gender'] = 'Children'
 
+
+    # List of birthstone names
+    birthstones = [
+        'GARNET', 'AMETHYST', 'AQUAMARINE', 'DIAMOND', 'EMERALD', 'PEARL', 
+        'RUBY', 'PERIDOT', 'SAPPHIRE', 'OPAL', 'CITRINE', 'TANZANITE'
+    ]
+
+    # Function to check if 'Class Desc' contains any birthstone name
+    def find_birthstone(class_desc):
+        if isinstance(class_desc, str):  # Ensure the value is a string
+            for stone in birthstones:
+                if stone in class_desc.upper():  # Check if the birthstone is part of the string
+                    return stone
+        return ''  # Return blank if no birthstone is found
+
+    # Apply the function to create the 'Birthstone' column
+    df_filtered['Birthstone'] = df_filtered['Class Desc'].apply(find_birthstone)
+
+    # Create the 'BSP_or_not' column based on the 'MstrSt ID' condition
+    df_filtered['BSP_or_not'] = df_filtered['MstrSt ID'].apply(lambda x: 'BSP' if x in [26481, 74692] else '')
+
+
+    def categorize_product(class_desc):
+        if isinstance(class_desc, str):  # Ensure the value is a string
+            class_desc = class_desc.upper()
+            if 'EARRINGS' in class_desc or 'EARS' in class_desc:
+                return 'Earrings'
+            elif 'PENDANTS' in class_desc or 'PENDS' in class_desc:
+                return 'Pendants'
+            elif ' RING' in class_desc:  # Notice the space before "RINGS"
+                return 'Rings'
+            elif 'BRACELETS' in class_desc:
+                return 'Bracelets'
+            elif 'CHAIN' in class_desc:
+                return 'Necklace'
+            elif 'NECKS' in class_desc or 'NECKLACE' in class_desc:
+                return 'Necklace'
+            elif 'SET' in class_desc:
+                return 'Set'
+            elif 'BAND' in class_desc:
+                return 'BAND'
+        return ''  # Return blank if no match found
+
+    # Apply the function to create the 'category' column
+    df_filtered['category'] = df_filtered['Class Desc'].apply(categorize_product)
+
+
+    def update_category_from_prod_desc(row):
+        if not row['category']:  # If category is blank
+            prod_desc = str(row['Prod Desc']).lower()
+            categories_found = []
+
+            # Search for keywords in Prod desc
+            if 'earring' in prod_desc or 'stud' in prod_desc:
+                categories_found.append('Earrings')
+            if ' ring' in prod_desc:
+                categories_found.append('Rings')
+            if 'pendant' in prod_desc or 'necklace' in prod_desc:
+                categories_found.append('Pendants' if 'pendant' in prod_desc else 'Necklace')
+            if 'bracelet' in prod_desc:
+                categories_found.append('Bracelets')
+            if 'band' in prod_desc:
+                categories_found.append('Band')
+            if 'locket' in prod_desc:
+                categories_found.append('Locket')
+            # If multiple categories are found, set as 'Set'
+            if len(categories_found) > 1:
+                return 'Set'
+            elif categories_found:
+                return categories_found[0]
+        return row['category']  # Return the original category if not blank
+
+    # Apply the update function
+    df_filtered['category'] = df_filtered.apply(update_category_from_prod_desc, axis=1)
+
+
+    # Create the 'type' column based on conditions in 'Prod desc'
+    def determine_type(prod_desc):
+        if isinstance(prod_desc, str):  # Ensure the value is a string
+            prod_desc = prod_desc.lower()
+            if 'heart' in prod_desc:
+                return 'Heart'
+            elif 'stud' in prod_desc:
+                return 'Studs'
+            elif 'drop' in prod_desc:
+                return 'Drop'
+        return ''  # Return blank if no match found
+
+    # Apply the function to create the 'type' column
+    df_filtered['type'] = df_filtered['Prod Desc'].apply(determine_type)
+
+    birthstone_data = [
+        (1, 'January', 'Garnet'),
+        (2, 'February', 'Amethyst'),
+        (3, 'March', 'Aquamarine'),
+        (4, 'April', 'Diamond'),
+        (5, 'May', 'Emerald'),
+        (6, 'June', 'Pearl'),
+        (7, 'July', 'Ruby'),
+        (8, 'August', 'Peridot'),
+        (9, 'September', 'Sapphire'),
+        (10, 'October', 'Opal'),
+        (11, 'November', 'Citrine'),
+        (12, 'December', 'Tanzanite')
+    ]
+
+    # Create a DataFrame from the data
+    birthstone_sheet = pd.DataFrame(birthstone_data, columns=['Month', 'Month Name', 'Birthstone'])
+
+
+    master_sheet = df_filtered[['PID','category','Birthstone','BSP_or_not','type','Gender','Vendor','Vendor Name','Own Retail','FC Index', 'FLDC','Safe/Non-Safe', 'Item Code']]
+
+    # Create the unique sheets
+
+    df_unique_vendor = df_filtered[['Vendor', 'Vendor Name']].drop_duplicates().dropna()
+
+
+    data = [
+        {"Vendor Name": "ALMOND (THAILAND) LIMITED", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
+        {"Vendor Name": "AMMANTE JEWELLS LLP", "Country of Origin": "India", "Lead Time(weeks)": 8},
+        {"Vendor Name": "ARIN", "Country of Origin": "Peru", "Lead Time(weeks)": 9},
+        {"Vendor Name": "ARPAS INTERNATIONAL LTD", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "ASIAN STAR COMPANY LTD", "Country of Origin": "India", "Lead Time(weeks)": 8},
+        {"Vendor Name": "BEAUTY GEMS FACTORY CO LTD", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
+        {"Vendor Name": "CHARM AMERICA", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "CREATIONS JEWELLERY MFG. PVT. LTD.", "Country of Origin": "India", "Lead Time(weeks)": 8},
+        {"Vendor Name": "DAISY'S COLLECTION, INC", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "DEORO - WIRE", "Country of Origin": "Peru", "Lead Time(weeks)": 9},
+        {"Vendor Name": "DIA GOLD CREATION PVT. LTD.", "Country of Origin": "India", "Lead Time(weeks)": 8},
+        {"Vendor Name": "DRL Manufacturing - LG", "Country of Origin": "DRL", "Lead Time(weeks)": 10},
+        {"Vendor Name": "DRL MANUFACTURING S.A.", "Country of Origin": "DRL", "Lead Time(weeks)": 10},
+        {"Vendor Name": "DRL/SARDELLI", "Country of Origin": "DRL", "Lead Time(weeks)": 10},
+        {"Vendor Name": "GDL JEWELLERY LTD", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
+        {"Vendor Name": "GOLDENLINE C/O BOGAZICI HEDIYELIK A.S.", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "IJM-INTERCONTINENTAL JEWELLERY MFG", "Country of Origin": "Thailand", "Lead Time(weeks)": 8},
+        {"Vendor Name": "JOHN C NORDT COMPANY", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "LARA CORPORATION LIMITED", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "Leach & Garner (HK) Limited", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "LINEA NUOVA S.A.", "Country of Origin": "Peru", "Lead Time(weeks)": 9},
+        {"Vendor Name": "Milor S.P.A", "Country of Origin": "Italy", "Lead Time(weeks)": 9},
+        {"Vendor Name": "MIORO GOLD, LLC", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "NEW GOLD", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "PD&P LTD.", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "RICHLINE ITALY SRL", "Country of Origin": "Italy", "Lead Time(weeks)": 12},
+        # Note: The country for "RICHLINE SA PTY" is unclear in the provided data. 
+        # If "Zales" is not a country, you can adjust as needed or remove. 
+        {"Vendor Name": "RICHLINE SA PTY", "Country of Origin": "Zales", "Lead Time(weeks)": None},
+        {"Vendor Name": "RLG STANDARD MANUFACTURING VENDOR", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "S&S JEWELRY", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "SABELLI, S.A. DE C.V.", "Country of Origin": "Mexico", "Lead Time(weeks)": 9},
+        {"Vendor Name": "SERENITY JEWELS PVT LTD", "Country of Origin": "India", "Lead Time(weeks)": 8},
+        {"Vendor Name": "SHANGOLD INDIA LTD", "Country of Origin": "India", "Lead Time(weeks)": 8},
+        {"Vendor Name": "SILO SPA-WIRES", "Country of Origin": "Italy", "Lead Time(weeks)": 12},
+        {"Vendor Name": "STRONG JEWELRY(HK) CO LTD CHONG", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "T.C.I. LTD", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "National Chain", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        # Repeated entries (if you want to keep them exactly as listed):
+        {"Vendor Name": "Leach & Garner (HK) Limited", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "LEACH & GARNER(HK) LTD", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "MANJUSAKA JEWELERS CO.,LTD", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "MEICHONG JEWELRY (HK) COMPANY LIMITED", "Country of Origin": "China", "Lead Time(weeks)": 8},
+        {"Vendor Name": "NATIONAL CHAIN", "Country of Origin": "US", "Lead Time(weeks)": 9},
+        {"Vendor Name": "PRIME DIRECT LIMITED", "Country of Origin": "China", "Lead Time(weeks)": 8},
+    ]
+    
+    # Create the DataFrame
+    df_coo = pd.DataFrame(data)
+
+    # Merge the data on Vendor Name to add the 'Country of Origin' and 'Lead Time'
+    vendor_sheet = pd.merge(df_unique_vendor, df_coo[['Vendor Name', 'Country of Origin', 'Lead Time(weeks)']], 
+                        on='Vendor Name', how='left')
+
+
+
+    def get_previous_retail_week():
+        """
+        Get the previous week's month, year of the previous month, 
+        last year's occurrence of that month, last month before the previous month in numeric format,
+        determine SP (Spring) or FA (Fall) based on the previous month,
+        and calculate the number of retail weeks for each month individually.
+        """
+        # Use the current date as input
+        current_date = datetime.now()
+
+        # Find the current week's Sunday
+        current_sunday = current_date - timedelta(days=current_date.weekday() + 1)
+
+        # Calculate the previous week's Sunday
+        previous_week_sunday = current_sunday - timedelta(days=7)
+
+        # Determine the previous week number
+        previous_week_number = (previous_week_sunday.day - 1) // 7 + 1
+
+        # Get the month and year of the previous week
+        current_month = previous_week_sunday.strftime('%b')
+        year_of_previous_month = previous_week_sunday.year
+
+        # Determine last year's occurrence of the same month
+        last_year_of_previous_month = year_of_previous_month - 1
+
+        # Determine the last month before the previous month
+        last_month_of_previous_month_date = previous_week_sunday.replace(day=1) - timedelta(days=1)
+        last_month = last_month_of_previous_month_date.strftime('%b').upper()
+
+        # Custom mapping for months
+        month_mapping = {
+            'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4,
+            'JUN': 5, 'JUL': 6, 'AUG': 7, 'SEP': 8,
+            'OCT': 9, 'NOV': 10, 'DEC': 11, 'JAN': 12
+        }
+        last_month_of_previous_month_numeric = month_mapping[last_month]
+
+        # Determine SP (Spring) or FA (Fall/Winter) based on the previous month
+        spring_months = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
+        fall_months = ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
+
+        season = "SP" if current_month in spring_months else "FA"
+
+        # Calculate the number of retail weeks for each month of the current year
+        current_year = year_of_previous_month
+        # Individual variables for retail weeks of each month
+    
+
+        def get_retail_weeks(year, month):
+            """
+            Calculate the number of retail weeks in a given month.
+            Retail weeks follow the Sunday-to-Saturday structure, 
+            and all days in a week belong to the month in which the week starts.
+            
+            Args:
+                year (int): The year of the month.
+                month (int): The month (1 for January, 12 for December).
+
+            Returns:
+                int: Number of retail weeks in the month.
+            """
+            # Get the first day and last day of the month
+            first_day = datetime(year, month, 1)
+            last_day = datetime(year, month, monthrange(year, month)[1])
+
+            # Find the first Sunday of the month
+            first_sunday = first_day + timedelta(days=(6 - first_day.weekday()) % 7)
+
+            # Find the last Saturday of the month
+            last_saturday = last_day - timedelta(days=last_day.weekday() + 1)
+
+            # Count retail weeks
+            current_week_start = first_sunday
+            week_count = 0
+
+            while current_week_start <= last_saturday:
+                week_count += 1
+                current_week_start += timedelta(days=7)  # Move to the next Sunday
+
+            # Check if the final week starts in the current month (partial week rule)
+            if current_week_start <= last_day:
+                week_count += 1
+
+            return week_count
+
+        feb_weeks = get_retail_weeks(current_year,2)
+        mar_weeks = get_retail_weeks(current_year,3)
+        apr_weeks = get_retail_weeks(current_year,4)
+        may_weeks = get_retail_weeks(current_year,5)
+        jun_weeks = get_retail_weeks(current_year,6)
+        jul_weeks = get_retail_weeks(current_year,7)
+        aug_weeks = get_retail_weeks(current_year,8)
+        sep_weeks = get_retail_weeks(current_year,9)
+        oct_weeks = get_retail_weeks(current_year,10)
+        nov_weeks = get_retail_weeks(current_year,11)
+        dec_weeks = get_retail_weeks(current_year,12)
+        jan_weeks = get_retail_weeks(current_year + 1, 1)  # January belongs to the next year
+
+        return current_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks
+        # return current_month, previous_week_number, year_of_previous_month, last_year_of_previous_month, last_month_of_previous_month_numeric, season
+
+    # Call the function and #print the results
     current_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks = get_previous_retail_week()
 
+
+   
+#     category_tuples=[
+
+#     ('Bridge Gem', '742'),
+#     ('Gold', '746'),
+#     ('Gold', '262&270'),
+#     ('Womens Silver', '260&404'),
+#     ('Precious', '264&268'),
+#     ('Fine Pearl', '265&271'),
+#     ('Semi', '272&733'),
+#     ('Diamond', '734&737&748'),
+#     ('Bridal', '739&267&263'),
+#     ("Men's", '768&771')
+
+# ]
     category_tuples = input_tuple
     
     
@@ -2954,15 +3563,25 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
     )
     for category, code in category_tuples]
     
-    
+    month_dict = {
+        "Feb": 1,
+        "Mar": 2,
+        "Apr": 3,
+        "May": 4,
+        "Jun": 5,
+        "Jul": 6,
+        "Aug": 7,
+        "Sep": 8,
+        "Oct": 9,
+        "Nov": 10,
+        "Dec": 11,
+        "Jan": 12
+    }
     current_month_number = month_dict.get(current_month, "Month not found")
-
     if current_month in [ "Oct","Nov" "Dec","Jan"]:
         rolling_method="Current MTH"
     else:
         rolling_method="YTD"
-
-
     year_of_previous_month=2024
     last_year_of_previous_month=2023
     
@@ -3000,9 +3619,12 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
         master_sheet,
         vendor_sheet,
         birthstone_sheet
+
     ) 
     
+    
     #main
+    # args = [(category, (code, num_products), dynamic_categories, file_path, other_params) for category, (code, num_products) in dynamic_categories.items()]
     args = [(category, (code, num_products), dynamic_categories, file_path, other_params)    for category, code, num_products in dynamic_categories ]
     # Use multiprocessing pool to process the categories
     with Pool(processes=os.cpu_count()) as pool:
