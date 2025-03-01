@@ -3370,7 +3370,7 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
         "Jan": 12
     }
     current_month_number = month_dict.get(current_month, "Month not found")
-    if current_month in [ "Oct","Nov" "Dec","Jan"]:
+    if current_month in ["Oct","Nov" "Dec","Jan","Feb","Mar","Apr","May"]:
         rolling_method="Current MTH"
     else:
         rolling_method="YTD"
