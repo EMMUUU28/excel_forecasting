@@ -9,8 +9,8 @@ def get_previous_retail_week():
     and calculate the number of retail weeks for each month individually.
     """
     # Use the current date as input
-    current_date = datetime.now()
-    # current_date = datetime(2025, 1, 23)
+    # current_date = datetime.now()
+    current_date = datetime(2025, 2, 21)
 
     # Find the current week's Sunday
     current_sunday = current_date - timedelta(days=current_date.weekday() + 1)
