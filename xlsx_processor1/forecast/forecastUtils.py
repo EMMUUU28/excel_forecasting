@@ -13,7 +13,8 @@ import math
 import multiprocessing as mp
 from multiprocessing import Manager, Pool
 import json 
-
+from .config import *
+import numpy as np
 
 def make_zip_and_delete(folder_path):
     folder_path = os.path.normpath(folder_path)
@@ -30,9 +31,9 @@ def make_zip_and_delete(folder_path):
         
         print(f"Folder '{folder_path}' has been compressed into '{zip_file_path}'")
 
-        # Delete the folder after zipping
-        shutil.rmtree(folder_path)
-        print(f"Folder '{folder_path}' has been deleted successfully.")
+        # # Delete the folder after zipping
+        # shutil.rmtree(folder_path)
+        # print(f"Folder '{folder_path}' has been deleted successfully.")
     
     except PermissionError:
         print(f"Permission denied: Cannot access '{folder_path}'. Please check folder permissions.")
@@ -41,109 +42,6 @@ def make_zip_and_delete(folder_path):
     except Exception as e:
         print(f"An error occurred: {e}")
  
-# Helper function for get_previous_retail_week()
-def get_retail_weeks(year, month):
-    """
-    Calculate the number of retail weeks in a given month.
-    Retail weeks follow the Sunday-to-Saturday structure, 
-    and all days in a week belong to the month in which the week starts.
-    
-    Args:
-        year (int): The year of the month.
-        month (int): The month (1 for January, 12 for December).
-
-    Returns:
-        int: Number of retail weeks in the month.
-    """
-    # Get the first day and last day of the month
-    first_day = datetime(year, month, 1)
-    last_day = datetime(year, month, monthrange(year, month)[1])
-
-    # Find the first Sunday of the month
-    first_sunday = first_day + timedelta(days=(6 - first_day.weekday()) % 7)
-
-    # Find the last Saturday of the month
-    last_saturday = last_day - timedelta(days=last_day.weekday() + 1)
-
-    # Count retail weeks
-    current_week_start = first_sunday
-    week_count = 0
-
-    while current_week_start <= last_saturday:
-        week_count += 1
-        current_week_start += timedelta(days=7)  # Move to the next Sunday
-
-    # Check if the final week starts in the current month (partial week rule)
-    if current_week_start <= last_day:
-        week_count += 1
-
-    return week_count
-
-def get_previous_retail_week():
-    """
-    Get the previous week's month, year of the previous month, 
-    last year's occurrence of that month, last month before the previous month in numeric format,
-    determine SP (Spring) or FA (Fall) based on the previous month,
-    and calculate the number of retail weeks for each month individually.
-    """
-    # Use the current date as input
-    current_date = datetime.now()
-    print(f"Current date: {current_date}")
-
-    # Find the current week's Sunday
-    current_sunday = current_date - timedelta(days=current_date.weekday() + 1)
-
-    # Calculate the previous week's Sunday
-    previous_week_sunday = current_sunday - timedelta(days=7)
-
-    # Determine the previous week number
-    previous_week_number = (previous_week_sunday.day - 1) // 7 + 1
-
-    # Get the month and year of the previous week
-    previous_month = previous_week_sunday.strftime('%b').upper()
-    year_of_previous_month = previous_week_sunday.year
-
-    # Determine last year's occurrence of the same month
-    last_year_of_previous_month = year_of_previous_month - 1
-
-    # Determine the last month before the previous month
-    last_month_of_previous_month_date = previous_week_sunday.replace(day=1) - timedelta(days=1)
-    last_month = last_month_of_previous_month_date.strftime('%b').upper()
-
-    # Custom mapping for months
-    month_mapping = {
-        'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4,
-        'JUN': 5, 'JUL': 6, 'AUG': 7, 'SEP': 8,
-        'OCT': 9, 'NOV': 10, 'DEC': 11, 'JAN': 12
-    }
-    last_month_of_previous_month_numeric = month_mapping[last_month]
-
-    # Determine SP (Spring) or FA (Fall/Winter) based on the previous month
-    spring_months = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
-    fall_months = ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
-
-    season = "SP" if previous_month in spring_months else "FA"
-
-    # Calculate the number of retail weeks for each month of the current year
-    current_year = year_of_previous_month
-    print(current_year)
-    # Individual variables for retail weeks of each month
-
-    feb_weeks = get_retail_weeks(current_year,2)
-    mar_weeks = get_retail_weeks(current_year,3)
-    apr_weeks = get_retail_weeks(current_year,4)
-    may_weeks = get_retail_weeks(current_year,5)
-    jun_weeks = get_retail_weeks(current_year,6)
-    jul_weeks = get_retail_weeks(current_year,7)
-    aug_weeks = get_retail_weeks(current_year,8)
-    sep_weeks = get_retail_weeks(current_year,9)
-    oct_weeks = get_retail_weeks(current_year,10)
-    nov_weeks = get_retail_weeks(current_year,11)
-    dec_weeks = get_retail_weeks(current_year,12)
-    jan_weeks = get_retail_weeks(current_year + 1, 1)  # January belongs to the next year
-
-    return previous_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks
-    # return previous_month, previous_week_number, year_of_previous_month, last_year_of_previous_month, last_month_of_previous_month_numeric, season
 
 def add_dropdown(ws, cell, options):
     # Create a data validation object with the list of options
@@ -251,17 +149,13 @@ def process_category(args):
 
     # Placeholder for the processing logic of each category
     # Use the original code logic for processing categories here.
+    print("Madhaveeeeeeeee ",year_of_previous_month,last_year_of_previous_month)
     print(f"Processing Category: {category} with Code: {code} and Num Products: {num_products}")
-    data = [
-            ["", "TY", year_of_previous_month, "LY", last_year_of_previous_month, "Season", season, "Current Year", "Month", current_month, current_month_number, "Week", previous_week_number, "", "MAY-SEP", "", "", "Last Completed Month", last_month_of_previous_month_numeric, "", "Use EOM Actual?", rolling_method],
-            ["", "Count of Items", "", 8215, "", "", "", "Last SP / FA Months", "Month", "Jul", "", "Jan", 12, "Sorted by:", "Dept Grouping >Class ID", "", "", ""],
-            ["", "", "", "", "", "", "", "# of Wks in Mth", feb_weeks, mar_weeks, apr_weeks, may_weeks, jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks, nov_weeks, dec_weeks, jan_weeks],
-            ["", category.upper(), code, "", "Avg Sales 1st & last Mth", 8, 11, "Month #", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, "", "", ""]
-        ]
 
     output_file = f"{category}{code}"
     output_file_path = os.path.join(file_path, f'{output_file}.xlsx')
-        # Initialize workbook and create sheets
+
+    # Initialize workbook and create sheets
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = category
@@ -275,7 +169,12 @@ def process_category(args):
 
 
     # Loop through products to generate PIDs
-
+    data = [
+        ["", "TY", year_of_previous_month, "LY", last_year_of_previous_month, "Season", season, "Current Year", "Month", current_month, current_month_number, "Week", previous_week_number, "", "MAY-SEP", "", "", "Last Completed Month", last_month_of_previous_month_numeric, "", "Use EOM Actual?", rolling_method],
+        ["", "Count of Items", "", 8215, "", "", "", "Last SP / FA Months", "Month", "Jul", "", "Jan", 12, "Sorted by:", "Dept Grouping >Class ID", "", "", ""],
+        ["", "", "", "", "", "", "", "# of Wks in Mth", feb_weeks, mar_weeks, apr_weeks, may_weeks, jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks, nov_weeks, dec_weeks, jan_weeks],
+        ["", category.upper(), code, "", "Avg Sales 1st & last Mth", 8, 11, "Month #", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, "", "", ""]
+    ]
     # Step 4: Populate Worksheet with Data
     for row_num, row_data in enumerate(data, 1):
         for col_num, value in enumerate(row_data, 1):
@@ -287,7 +186,8 @@ def process_category(args):
     lookup_key = f"{category.upper()}{code}"
 # Perform a lookup in 'report grouping'
     lookup_value_c2 = report_grouping_df.loc[
-    report_grouping_df[0].str.upper() == lookup_key.upper(), 3].iloc[0]
+    report_grouping_df[0].str.upper() == lookup_key.upper(), 3
+    ].iloc[0]
     ws['C2'] = lookup_value_c2
     ws['D2'] = "=C2*51+4"
     ws['K1'] = "=VLOOKUP(J1,Month!A:B,2,0)"
@@ -354,67 +254,25 @@ def process_category(args):
 
 
 
-    ALL_VALUES = [
-        "PID/BLU/MKST", "Current FC Index", "(TY/LY) STD Sales Index/12M FC", "STD Trend / 12M FC",
-        "Item Status/Forecasting Method/Safe", "Current Str Cnt/Last Str Cnt/Last Updated",
-        "Store Model/Com Model/TTL Model", "MA Proj/Proj Ball/Holiday Bd FC",
-        "MCY/OH/OH in Transit/MTD Ships/LW Ships", "Planned WOS/WOP/Wkly Avg Sale/Last 4 Wks Ships",
-        "Actual WOS/WOP/Real OOS Loc", "Excess Proj Qty & $ / Recall Wks of Poj & Qty",
-        "Proj Qty & $ to Release / Note", "Vendor/Min order", "RL TTL/Net Proj/ORD Unalloc/+/− to Model",
-        "MA Bin/FLDC/WIP QTY/REPLN HOLD DATE", "WIP Demand", "MD Status/Store & Mcom Repl",
-        "TTL Last Repl/Age/Mths Active", "Last Cost/Owned/TKT Ret/GM/Actual GM", "Metal Lock/MFG Policy",
-        "KPI DATA", "Last KPI Door count", "Diff to Current Door",
-        "Out of Stock Locations", "Suspended Location count",
-        "Click to View online", "DEPT #", "Sub Class", "Masterstyle", "PID Desc",
-        "COM 1st Live/Live Site/V2C/WebID/STD Rtn", "Web ID Description",
-        "Last Reviewed Date/Code/Qty to Enter", "Current Review Comments"
-    ]
 
-    H_VALUES = [
-        'ROLLING 12M FC', 'Index', 'FC by Index', 'FC by Trend', 'Recommended FC', 'Planned FC',
-        'Planned Shipments', 'Planned EOH (Cal)', 'Gross Projection (Nav)', 'Macys Proj Receipts',
-        'Planned Sell thru %', "TOTAL 2023",'Total Sales Units', 'Store Sales Units', 'Com Sales Units',
-        'COM % to TTL (Sales)', 'TOTAL EOM OH', 'Store EOM OH', 'COM EOM OH',
-        'COM % to TTL (EOH)', 'Omni Sales $', 'COM Sales $', 'Omni AUR/% Diff Own',
-        'Omni Sell Thru %', 'Store SellThru %', 'Omni Turn', 'Store turn',
-        'TY Store Sales U vs LY', 'TY COM sales U vs LY', 'TY Store EOH vs LY',
-        'Omni OO Units', 'COM OO Units', 'Omni Receipts',    "TOTAL 2023",
-        "Total Sales Units",
-        "Store Sales Units",
-        "Com Sales Units",
-        "COM % to TTL (Sales)",
-        "TOTAL EOM OH",
-        "Store EOM OH",
-        "COM EOM OH",
-        "COM % to TTL (EOH)",
-        "Omni Receipts",
-        "Omni Sell Thru %",
-        "Store SellThru %",
-        "Omni Turn",
-        "Store Turn",
-        "Omni Sales $",
-        "COM Sales $",
-        "Omni AUR/% Diff Own"
-    ]
-    MONTHLY_VALUES = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT',
-                    'NOV', 'DEC', 'JAN', 'ANNUAL', 'SPRING', 'FALL']
+
     def apply_round_format(ws, cell_ranges, decimal_places):
-        for cell_range in cell_ranges:
-            # Check if the cell range is a single cell
-            if ":" in cell_range:
-                # This is a range, so we can iterate through it
-                for row in ws[cell_range]:
-                    for cell in row:
-                        # Check if cell contains a formula by verifying if the value starts with "="
-                        if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
-                            # Wrap formula in ROUND with the specified decimal places
-                            cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
-            else:
-                # This is a single cell reference
-                cell = ws[cell_range]
-                if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
-                    # Wrap formula in ROUND with the specified decimal places
-                    cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
+            for cell_range in cell_ranges:
+                # Check if the cell range is a single cell
+                if ":" in cell_range:
+                    # This is a range, so we can iterate through it
+                    for row in ws[cell_range]:
+                        for cell in row:
+                            # Check if cell contains a formula by verifying if the value starts with "="
+                            if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
+                                # Wrap formula in ROUND with the specified decimal places
+                                cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
+                else:
+                    # This is a single cell reference
+                    cell = ws[cell_range]
+                    if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
+                        # Wrap formula in ROUND with the specified decimal places
+                        cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
 
     def apply_format(ws, cell_ranges, number_format):
         for cell_range in cell_ranges:
@@ -428,6 +286,8 @@ def process_category(args):
                 # This is a single cell
                 cell = ws[cell_range]
                 cell.number_format = number_format
+
+
 
 
     # Open the source workbook
@@ -446,22 +306,6 @@ def process_category(args):
     # Step 6: Apply Filters to A3:P3
     ws_index.auto_filter.ref = "A3:P3"
 
-
-    month_data = [
-        ["All", ""],
-        ["Feb", 1],
-        ["Mar", 2],
-        ["Apr", 3],
-        ["May", 4],
-        ["Jun", 5],
-        ["Jul", 6],
-        ["Aug", 7],
-        ["Sep", 8],
-        ["Oct", 9],
-        ["Nov", 10],
-        ["Dec", 11],
-        ["Jan", 12],
-    ]
 
     # Write the data to the "Month" sheet
     for row_num, (month, number) in enumerate(month_data, start=1):
@@ -566,7 +410,7 @@ def process_category(args):
         matching_row = planning_df.loc[planning_df['Cross ref'].str.upper() == cross_ref]
 
         pid_value = matching_row['PID'].iloc[0]
-        #print(pid_value)
+        print(pid_value)
         RLJ = matching_row['Adjusted RLJ Item'].iloc[0] 
         MKST = matching_row['Mkst'].iloc[0] # Get the first matching PID
         Current_FC_Index = matching_row['FC Index'].iloc[0] # Get the first matching PID
@@ -659,8 +503,12 @@ def process_category(args):
         Macys_Proj_Receipts_Dec=matching_row['DEC RECPT'].iloc[0]
         Macys_Proj_Receipts_Jan=matching_row['JAN RECPT'].iloc[0]
         MCOM_Data_matching_row=MCOM_Data.loc[MCOM_Data['PID'].str.upper() == pid_value]
-        this_year_value=2024
-        last_year_value=2023
+        if current_month  in ['Feb','Mar','Apr'] :
+            this_year_value=year_of_previous_month-1
+            last_year_value=last_year_of_previous_month-1
+        else:
+            this_year_value=year_of_previous_month
+            last_year_value=last_year_of_previous_month
         this_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == this_year_value)]
         last_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == last_year_value)]
         this_year_MCOM=MCOM_Data.loc[(MCOM_Data['PID'] == pid_value) & (MCOM_Data['Year'] == this_year_value)]
@@ -703,7 +551,7 @@ def process_category(args):
             OO_MCOM_Total_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OO Total Units'].sum()
             LY_Receipts[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
         index_df.columns = index_df.columns.str.strip().str.upper()
-        #print("Current_FC_Index",Current_FC_Index)
+        print("Current_FC_Index",Current_FC_Index)
         if pd.isna(Current_FC_Index):
             Current_FC_Index = "Dia"
 
@@ -714,37 +562,60 @@ def process_category(args):
         for month in months:
             index_value[month] = index_row_data[month].iloc[0] if not index_row_data.empty else 0
 
-
                         #algorithm
 
-
+                     #algorithm
         #######step1####################
         # Function to get Lead Time by PID
-        def get_lead_time_by_pid(pid_value):
-            # Find the Vendor for the given PID
-            vendor = master_sheet.loc[master_sheet['PID'] == pid_value, 'Vendor Name'].values[0]
-            print('vendor',vendor)
-            # Find the Lead Time for the Vendor
-            country = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Country of Origin']
-            print('country',country)
-            if not country.empty:
-                country = country.values[0]  # Access the first value
-            else:
-                country = None  # Set to None if empty
-            current_month_upper = current_month.upper()
-            lead_time = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Lead Time(weeks)']
-            lead_time=lead_time.values[0] if not lead_time.empty else 8
-            if current_month_upper=='NOV' or current_month_upper=='JAN' or current_month_upper=='DEC':
-                if country=='China':
-                    lead_time=10
-            if current_month_upper=='MAY' or current_month_upper=='JUN' or current_month_upper=='JULY':
-                if country=='Italy':
-                    lead_time=14
-            # lead_time = dynamicLead(current_month_upper, country, lead_time)
-            return lead_time 
-        
-        lead_time = get_lead_time_by_pid(pid_value)
+        def get_lead_time_by_pid(pid_value,current_date):
+                # Find the Vendor for the given PID
+                vendor = master_sheet.loc[master_sheet['PID'] == pid_value, 'Vendor Name'].values[0]
+                print('vendor',vendor)
+                # Find the Lead Time for the Vendor
+                country = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Country of Origin']
+                print('country',country)
+                if not country.empty:
+                    country = country.values[0]  # Access the first value
+                else:
+                    country = None  # Set to None if empty
+            
+
+                lead_time = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Lead Time(weeks)']
+                # Ensure a single value is selected
+                lead_time = lead_time.values[0] if not lead_time.empty else np.nan
+
+                # Check if the value is NaN and assign a default
+                lead_time = 8 if pd.isna(lead_time) else lead_time
+                print('lead_time',lead_time)
+
+                lead_time_days = lead_time * 7
+            
+                # Calculate the forecast date
+                forecast_date = current_date + timedelta(days=lead_time_days)
+
+                currentdate = current_date.strftime("%Y-%m-%d")
+                forecast_lead_time_date = forecast_date.strftime("%Y-%m-%d")
+                holiday_start_date = "2025-01-22"
+                holiday_end_date = "2025-02-05"
+
+
+            
+                if country=="China" and currentdate <= "2025-02-05" and forecast_lead_time_date >= "2025-01-22":
+                    lead_time = 11
+                if country=="Italy" and currentdate <= "2025-08-31" and forecast_lead_time_date >= "2025-08-01":
+                    lead_time = 14
+                
+                # lead_time = dynamicLead(currentdate,forecast_lead_time_date,lead_time,country)
+
+                return lead_time
+            
+        #current_date = datetime.today()
+
+        current_date= datetime(2025,2,21)
+
+        lead_time = get_lead_time_by_pid(pid_value,current_date)
         print('lead_time',lead_time) 
+
             # Function to get the 3-letter month abbreviation based on the month number
         # Retail calendar month sequence
         retail_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
@@ -770,58 +641,6 @@ def process_category(args):
             # Return the corresponding abbreviation, or None if not found
             return month_mapping.get(full_month, None)
         
-        # def calculate_forecast_months(lead_time_weeks, current_date,current_month):
-        #     # Calculate the lead time in days
-        #     lead_time_days = lead_time_weeks * 7
-            
-        #     # Calculate the forecast date
-        #     forecast_date = current_date + timedelta(days=lead_time_days)
-            
-        #     # Extract the forecast month and year
-        #     forecast_month = forecast_date.strftime("%B")  # Full month name
-        #     forecast_year = forecast_date.year
-        #     forecast_month_abbr = convert_month_to_abbr(forecast_month)
-        #     print("forecast_month ",forecast_month_abbr)
-        #     print("current_month",current_month)  
-
-        #     check = False
-        #     # Calculate the week of the forecast month
-        #     first_day_of_month = forecast_date.replace(day=1)
-        #     days_diff = (forecast_date - first_day_of_month).days
-        #     week_of_forecast_month = math.ceil((days_diff + 1) / 7)  # +1 to include the current day in the week count
-
-        #     if week_of_forecast_month > 3 :
-        #         # Find the index of the last month
-        #         forecast_index = retail_months.index(forecast_month_abbr)                
-        #         # Get the next month (wrap around using modulo)
-        #         forecast_month_abbr = retail_months[(forecast_index + 1) % len(retail_months)]
-        #         check = True
-            
-
-        #     # Calculate the week of the current month
-        #     first_day_of_current_month = current_date.replace(day=1)
-        #     days_diff_current = (current_date - first_day_of_current_month).days
-        #     week_of_current_month = math.ceil((days_diff_current + 1) / 7)
-
-        #     # Define the month names in 3-letter format
-        #     #month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-            
-        #     # # Create the list of months
-        #     # start = month_names.index(current_month) + 1
-        #     # end = month_names.index(forecast_month_abbr) + 1
-        #     forecast_month_list =  [forecast_month_abbr]
-
-        
-        #     # Display the result
-        #     print(f"Forecast month is {forecast_month} {forecast_year}")
-        #     print(f"Week of the forecast month: Week {week_of_forecast_month}")
-        #     print(f"Current month is {current_date.strftime('%B')} {current_date.year}")
-        #     print(f"Week of the current month: Week {week_of_current_month}")
-        #     print(f"Forecast months list: {forecast_month_list}")
-
-        #     return forecast_month_list , week_of_forecast_month , forecast_month_abbr , check
-
-        # Get the current date
 
         def calculate_forecast_months(lead_time_weeks, current_date,current_month):
             # Calculate the lead time in days
@@ -869,8 +688,7 @@ def process_category(args):
 
             return forecast_month_list , week_of_forecast_month , forecast_month_abbr , check
 
-        #current_date = datetime.today()
-        current_date= datetime(2025,1,23)
+
         if math.isnan(lead_time):
             lead_time = 8
 
@@ -894,7 +712,7 @@ def process_category(args):
             
             # Determine the season and the corresponding std period length
             if current_month in spring_season:
-                std_period = 5  # Last 5 months for Spring
+                std_period = 4  # Last 5 months for Spring
             elif current_month in fall_season:
                 std_period = 4  # Last 3 months for Fall
             else:
@@ -907,7 +725,31 @@ def process_category(args):
                 std_months.insert(0, retail_months[std_index])  # Insert at the beginning to maintain order
             
             return std_months
-        std_months = get_std_months(current_month)
+        
+        months_new = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
+        def get_month_range(months, month_start, endMonth):
+            # Find the start and end indices in the months list
+            start_index = months.index(month_start)
+            end_index = months.index(endMonth)
+        
+            # Handle the circular nature of the list
+            if end_index < start_index:
+                # Rolling over to the next year
+                selected_months = months[start_index:] + months[:end_index + 1]
+            else:
+                # Normal range
+                selected_months = months[start_index:end_index + 1]
+        
+            return selected_months
+        
+
+        if month_from and month_to:
+            first_month_std=convert_month_to_abbr(month_from).upper()
+            last_mont_std=convert_month_to_abbr(month_to).upper()
+            std_months = get_month_range(months_new, first_month_std, last_mont_std)
+        else:
+            std_months = get_std_months(current_month)
+
         print(std_months)
         std_months_upper = [month.upper() for month in std_months]
         # TY_Unit_Sales_list=[TY_Unit_Sales['FEB'],TY_Unit_Sales['MAR'],TY_Unit_Sales['APR'],TY_Unit_Sales['MAY'],TY_Unit_Sales['JUN'],TY_Unit_Sales['JUL'],TY_Unit_Sales['AUG'],TY_Unit_Sales['SEP'],TY_Unit_Sales['OCT'],TY_Unit_Sales['NOV'],TY_Unit_Sales['DEC'],TY_Unit_Sales['JAN']]
@@ -1185,9 +1027,10 @@ def process_category(args):
             # Print the results dictionary
             print("planned_fc:", planned_fc)
             print("This Year sales",TY_Unit_Sales)
-            current_month_sales_percentage = 25
+            current_month_sales_percentage = int(percentage)
             current_month_upper = current_month.upper()
-            planned_fc[current_month_upper] =  round(TY_Unit_Sales[current_month_upper] / (current_month_sales_percentage/100))
+            current_month_fc = round(TY_Unit_Sales[current_month_upper] / (current_month_sales_percentage/100))
+            planned_fc[current_month_upper] =  current_month_fc if current_month_fc > 0 else 0
             print("planned_fc_current%_re",planned_fc)
             #compare
             forecast_months_upper = [month.upper() for month in forecast_months]
@@ -1218,7 +1061,7 @@ def process_category(args):
             print("in_transit",in_transit)
             # Calculate using the logic in the Excel formula
             planned_shp=[Nav_Feb,Nav_Mar,Nav_Apr,Nav_May,Nav_Jun,Nav_Jul,Nav_Aug,Nav_Sep,Nav_Oct,Nav_Nov,Nav_Dec,Nav_Jan]
-            planned_shp={key:planned_shp[i] for i,key in enumerate(retail_months_upper)}
+            planned_shp={key:abs(planned_shp[i]) for i,key in enumerate(retail_months_upper)}
             print('planned_shp',planned_shp)
             planned_shp[current_month_upper] += in_transit
             print('planned_shpadd_in_trasit',planned_shp)
@@ -1540,8 +1383,6 @@ def process_category(args):
                     planned_shp[first_forecast_month] += (required_quantity_month_dict[first_forecast_month] * 1.15)
                     total_gross_projection_added += (required_quantity_month_dict[first_forecast_month] * 1.15)
 
-
-
             if total_gross_projection_added < Min_order:
                 planned_shp[first_forecast_month] = Min_order
 
@@ -1603,20 +1444,22 @@ def process_category(args):
             # 4) Calculate sums for each season
             # --- Spring ---
             planned_spring = season_sum(planned_shipments, spring_months_upper)
-            omni_spring    = season_sum(omni_receipts, spring_months_upper)
             macys_spring   = season_sum(macys_proj_receipt, spring_months_upper)
             
             # --- Fall ---
             planned_fall = season_sum(planned_shipments, fall_months_upper)
-            omni_fall    = season_sum(omni_receipts, fall_months_upper)
             macys_fall   = season_sum(macys_proj_receipt, fall_months_upper)
 
             fcm = forecast_months[0]
 
             # Now check the three conditions:
-            if last_year_maintained and this_year_maintained and average_store_sale_thru > 0.10 :
+            if Own_Retail >= 1000:
+                percent = 0.65
+            else:
+                percent = 0.75
+            if average_store_sale_thru > 0.10 :
                 if fcm == "Apr":
-                    macys_spring_75 = macys_spring * 0.75
+                    macys_spring_75 = round(macys_spring * percent)
                     print("macys_spring_75",macys_spring_75)
                     feb_mar_apr_gross_projection = planned_shipments["FEB"] + planned_shipments["MAR"] +  planned_shipments["APR"]
                     print("feb_mar_apr_gross_projection",feb_mar_apr_gross_projection)
@@ -1624,40 +1467,91 @@ def process_category(args):
                         print(macys_spring_75 - feb_mar_apr_gross_projection)
                         print(planned_shipments['APR'])
                         planned_shipments['APR'] += macys_spring_75 - feb_mar_apr_gross_projection
+                        pids_below_door_count.append(pid_value)
                 if fcm == "Jul":
                     spring_gross_projection = planned_shipments["FEB"] + planned_shipments["MAR"] +  planned_shipments["APR"] +planned_shipments["MAY"] + planned_shipments["JUN"] +  planned_shipments["JUL"]
                     if spring_gross_projection < macys_spring:
                         planned_shipments['JUL'] += macys_spring - spring_gross_projection
+                        pids_below_door_count.append(pid_value)
                 if fcm == "Oct":
-                    macys_fall_75 = macys_fall * 0.75
+                    macys_fall_75 =round( macys_fall * percent)
                     aug_sep_oct_gross_projection = planned_shipments["AUG"] + planned_shipments["SEP"] +  planned_shipments["OCT"]
                     if aug_sep_oct_gross_projection < macys_fall_75:
                         planned_shipments['OCT'] += macys_fall_75 - aug_sep_oct_gross_projection
+                        pids_below_door_count.append(pid_value)
                 if fcm == "Jan":
                     fall_gross_projection = planned_shipments["AUG"] + planned_shipments["SEP"] +  planned_shipments["OCT"] +planned_shipments["NOV"] + planned_shipments["DEC"] +  planned_shipments["JAN"]
                     if fall_gross_projection < macys_fall:
                         planned_shipments['JAN'] += macys_fall - fall_gross_projection
+                        pids_below_door_count.append(pid_value)
+            def round_to_nearest_five(value):
+                return round(value / 5) * 5
+            # planned_shipments={key: round(value) for key, value in planned_shipments.items()}
 
-            print(planned_shipments)
+            planned_shipments[fcm.upper()] = round_to_nearest_five(planned_shipments[fcm.upper()])
             plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shipments, row_21, row_37, row_43, row_17, current_month_upper)
             print('plan_eoh',plan_oh)
             print("planned_shp",planned_shipments)
-            # 5) Calculate the combined (planned + omni) for each season
-            combined_spring = planned_spring + omni_spring
-            combined_fall   = planned_fall + omni_fall
+            planned_spring = season_sum(planned_shipments, spring_months_upper)
+            planned_fall = season_sum(planned_shipments, fall_months_upper)
+
             # 6) Compare Macys Projection vs. the Combined Total
             #    If Macys Projection is less than the combined total, print a warning
-            if macys_spring < combined_spring or macys_fall < combined_fall:
+            if macys_spring < planned_spring or macys_fall < planned_fall:
                 notify_macys.append(pid_value)
-            
+ 
+
+        if current_month  in ['Feb','Mar','Apr'] :
+
+            this_year_value=year_of_previous_month
+            last_year_value=last_year_of_previous_month
+            this_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == this_year_value)]
+            last_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == last_year_value)]
+            this_year_MCOM=MCOM_Data.loc[(MCOM_Data['PID'] == pid_value) & (MCOM_Data['Year'] == this_year_value)]
+            last_year_MCOM=MCOM_Data.loc[(MCOM_Data['PID'] == pid_value) & (MCOM_Data['Year'] == last_year_value)]
+            # Define months in order
+            months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+            # Initialize dictionaries to store results
+            TY_Unit_Sales = {month: 0 for month in months}
+            LY_Unit_Sales = {month: 0 for month in months}
+            LY_OH_Units = {month: 0 for month in months}
+            TY_OH_Units = {month: 0 for month in months}
+            TY_Receipts = {month: 0 for month in months}
+            TY_MCOM_Unit_Sales = {month: 0 for month in months}
+            TY_OH_MCOM_Units={month: 0 for month in months}
+            PTD_TY_Sales={month: 0 for month in months}
+            MCOM_PTD_TY_Sales={month: 0 for month in months}
+            LY_MCOM_Unit_Sales={month: 0 for month in months}
+            LY_MCOM_OH_Units = {month: 0 for month in months}
+            OO_Total_Units={month: 0 for month in months}
+            OO_MCOM_Total_Units={month: 0 for month in months}
+            LY_Receipts={month: 0 for month in months}
+            LY_PTD_Sales={month: 0 for month in months}
+            MCOM_PTD_LY_Sales={month: 0 for month in months}
+            # Sum data for each month
+            for month in months:
+                TY_Unit_Sales[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                LY_Unit_Sales[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                LY_OH_Units[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'OH TY Units'].sum()
+                TY_OH_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OH TY Units'].sum()
+                TY_Receipts[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
+                TY_MCOM_Unit_Sales[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                LY_MCOM_Unit_Sales[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                TY_OH_MCOM_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OH TY Units'].sum()
+                PTD_TY_Sales[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                LY_PTD_Sales[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                MCOM_PTD_TY_Sales[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                MCOM_PTD_LY_Sales[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                LY_MCOM_OH_Units[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'OH TY Units'].sum()
+                OO_Total_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OO Total Units'].sum()
+                OO_MCOM_Total_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OO Total Units'].sum()
+                LY_Receipts[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
             # 7) Optional: Print out all the final values to see at a glance
             print("\n--- Season Summaries ---")
             print(f"Planned Shipments Spring: {planned_spring}, Fall: {planned_fall}")
-            print(f"Omni Receipts Spring:    {omni_spring},    Fall: {omni_fall}")
             print(f"Macys Receipts Spring:   {macys_spring},   Fall: {macys_fall}")
-            print(f"Combined Spring:         {combined_spring}")
-            print(f"Combined Fall:           {combined_fall}")
-            
+            print("END ONE PRODUCT..........")
+
         dynamic_formulas = {
             f"G{start_row + 34}": g_value,
             f"F{start_row + 1}": f"=C{start_row + 1}",
@@ -3171,6 +3065,7 @@ def process_category(args):
     wb.save(output_file_path)  # Save the workbook as an .xlsx file
     print(f"Workbook '{output_file}' saved successfully.")
     result = {}
+    
     # result[output_file] = {"Pid_to_review": pids_below_door_count, "Pid_to_birthstone": birthstone_list ,  "Pid_to_notify_to_macy":notify_macys,   "Pid_to_Store_product": store_products}
     #print("JSON structure to be written:\n", final_data)
     result = {
@@ -3183,8 +3078,10 @@ def process_category(args):
     }
     return result
 
+
 def convert_to_tuples(categories):
     return [(category['name'], category['value']) for category in categories]
+
 
 def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple):
 
@@ -3427,111 +3324,6 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
 
 
 
-    def get_previous_retail_week():
-        """
-        Get the previous week's month, year of the previous month, 
-        last year's occurrence of that month, last month before the previous month in numeric format,
-        determine SP (Spring) or FA (Fall) based on the previous month,
-        and calculate the number of retail weeks for each month individually.
-        """
-        # Use the current date as input
-        current_date = datetime.now()
-
-        # Find the current week's Sunday
-        current_sunday = current_date - timedelta(days=current_date.weekday() + 1)
-
-        # Calculate the previous week's Sunday
-        previous_week_sunday = current_sunday - timedelta(days=7)
-
-        # Determine the previous week number
-        previous_week_number = (previous_week_sunday.day - 1) // 7 + 1
-
-        # Get the month and year of the previous week
-        current_month = previous_week_sunday.strftime('%b')
-        year_of_previous_month = previous_week_sunday.year
-
-        # Determine last year's occurrence of the same month
-        last_year_of_previous_month = year_of_previous_month - 1
-
-        # Determine the last month before the previous month
-        last_month_of_previous_month_date = previous_week_sunday.replace(day=1) - timedelta(days=1)
-        last_month = last_month_of_previous_month_date.strftime('%b').upper()
-
-        # Custom mapping for months
-        month_mapping = {
-            'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4,
-            'JUN': 5, 'JUL': 6, 'AUG': 7, 'SEP': 8,
-            'OCT': 9, 'NOV': 10, 'DEC': 11, 'JAN': 12
-        }
-        last_month_of_previous_month_numeric = month_mapping[last_month]
-
-        # Determine SP (Spring) or FA (Fall/Winter) based on the previous month
-        spring_months = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
-        fall_months = ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
-
-        season = "SP" if current_month in spring_months else "FA"
-
-        # Calculate the number of retail weeks for each month of the current year
-        current_year = year_of_previous_month
-        # Individual variables for retail weeks of each month
-    
-
-        def get_retail_weeks(year, month):
-            """
-            Calculate the number of retail weeks in a given month.
-            Retail weeks follow the Sunday-to-Saturday structure, 
-            and all days in a week belong to the month in which the week starts.
-            
-            Args:
-                year (int): The year of the month.
-                month (int): The month (1 for January, 12 for December).
-
-            Returns:
-                int: Number of retail weeks in the month.
-            """
-            # Get the first day and last day of the month
-            first_day = datetime(year, month, 1)
-            last_day = datetime(year, month, monthrange(year, month)[1])
-
-            # Find the first Sunday of the month
-            first_sunday = first_day + timedelta(days=(6 - first_day.weekday()) % 7)
-
-            # Find the last Saturday of the month
-            last_saturday = last_day - timedelta(days=last_day.weekday() + 1)
-
-            # Count retail weeks
-            current_week_start = first_sunday
-            week_count = 0
-
-            while current_week_start <= last_saturday:
-                week_count += 1
-                current_week_start += timedelta(days=7)  # Move to the next Sunday
-
-            # Check if the final week starts in the current month (partial week rule)
-            if current_week_start <= last_day:
-                week_count += 1
-
-            return week_count
-
-        feb_weeks = get_retail_weeks(current_year,2)
-        mar_weeks = get_retail_weeks(current_year,3)
-        apr_weeks = get_retail_weeks(current_year,4)
-        may_weeks = get_retail_weeks(current_year,5)
-        jun_weeks = get_retail_weeks(current_year,6)
-        jul_weeks = get_retail_weeks(current_year,7)
-        aug_weeks = get_retail_weeks(current_year,8)
-        sep_weeks = get_retail_weeks(current_year,9)
-        oct_weeks = get_retail_weeks(current_year,10)
-        nov_weeks = get_retail_weeks(current_year,11)
-        dec_weeks = get_retail_weeks(current_year,12)
-        jan_weeks = get_retail_weeks(current_year + 1, 1)  # January belongs to the next year
-
-        return current_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks
-        # return current_month, previous_week_number, year_of_previous_month, last_year_of_previous_month, last_month_of_previous_month_numeric, season
-
-    # Call the function and #print the results
-    current_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks = get_previous_retail_week()
-
 
    
 #     category_tuples=[
@@ -3582,8 +3374,8 @@ def process_data(input_path,file_path,month_from,month_to,percentage,input_tuple
         rolling_method="Current MTH"
     else:
         rolling_method="YTD"
-    year_of_previous_month=2024
-    last_year_of_previous_month=2023
+    # year_of_previous_month=2024
+    # last_year_of_previous_month=2023
     
     other_params = (
         year_of_previous_month,

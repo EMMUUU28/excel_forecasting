@@ -12,7 +12,6 @@ from django.http import FileResponse
 from rest_framework import status
 
 
-previous_month, previous_week_number, year_of_previous_month,last_year_of_previous_month, last_month_of_previous_month_numeric,season, feb_weeks, mar_weeks, apr_weeks, may_weeks,jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks,nov_weeks, dec_weeks, jan_weeks = get_previous_retail_week()
 
 
 class UploadXlsxAPIView(APIView):

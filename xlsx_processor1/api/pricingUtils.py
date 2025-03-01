@@ -273,7 +273,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     ws[f"{column_dict['IMAGE']}7"].font = subheader_bold
     ws[f"{column_dict['IMAGE']}7"].alignment = alignment_left
     
-    ws[f"{column_dict['STYLE #']}7"] = "JCP"
+    ws[f"{column_dict['STYLE #']}7"] = ""
     ws[f"{column_dict['STYLE #']}7"].font = subheader_font
     ws[f"{column_dict['STYLE #']}7"].alignment = alignment_left
     
@@ -716,7 +716,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["Gross\nMargin_1"] + str(r)] = '=(' + column_dict["Sell_1"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Sell_1"] + str(r)
         ws[column_dict["Gross\nMargin_1"] + str(r)].number_format = '0%'
 
-        ws[column_dict["Net\nSell_1"] + str(r)] = '=' + column_dict["Sell_1"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)'
+        ws[column_dict["Net\nSell_1"] + str(r)] = ('=SUM($' + column_dict["Box"] + '$' + str(r) +':$' + column_dict["Cert"] + '$' + str(r) + ')')
         ws[column_dict["Net\nMargin_1"] + str(r)] = '=(' + column_dict["Net\nSell_1"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Net\nSell_1"] + str(r)
         ws[column_dict["Net\nMargin_1"] + str(r)].number_format = '0.0%'
 
@@ -740,7 +740,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
         ws[column_dict["Gross\nMargin_2"] + str(r)] = '=(' + column_dict["Sell_2"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Sell_2"] + str(r)
         ws[column_dict["Gross\nMargin_2"] + str(r)].number_format = '0%'
 
-        ws[column_dict["Net\nSell_2"] + str(r)] = '=' + column_dict["Sell_2"] + str(r) + '*(1-$' + column_dict["Net\nSell_2"] + '$8)'
+        ws[column_dict["Net\nSell_2"] + str(r)] = ( '=' + column_dict["Sell_2"] + '$' + str(r) +  '*(1-$' + column_dict["Net\nSell_2"] + '$8)' +'-SUM($' + column_dict["Box"] + '$' + str(r) + ':$' + column_dict["Cert"] + '$' + str(r) + ')')
         ws[column_dict["Net Margin_2"] + str(r)] = '=(' + column_dict["Net\nSell_2"] + str(r) + '-' + column_dict["LANDED\nTOTAL"] + str(r) + ')/' + column_dict["Net\nSell_2"] + str(r)
         ws[column_dict["Net Margin_2"] + str(r)].number_format = '0.0%'
 
@@ -815,7 +815,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
 
     # Save the file
     ws.column_dimensions[column_dict["METAL\nCOST"]].width = 10 + 11 * 0.08 * 2
-    ws.merge_cells('A6:C6')#NTC
+
     # Set value for merged cells
     ws[column_dict["IMAGE"] + '6'] = "RICHLINE JEWELERY GROUP"
 
@@ -1458,6 +1458,7 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     ws.column_dimensions[column_dict["Metal\nCost\n /Gm"]].width = 10
     ws.column_dimensions[column_dict["DIA CTTW"]].width = 10
     ws.column_dimensions[column_dict["wt."]].width = 10
+    ws.column_dimensions[column_dict["Quality"]].width = 15
     for col in ["Sell_1", "Gross\nMargin_1", "Net\nSell_1", "Net\nMargin_1", "MSRP_1", "IMU_1", "AUR_1", "AUR\nDiscount_1", 
         "AUR\nGM%_1", "1st MKD_1", "MKD NM%_1", "Sell_2", "Gross\nMargin_2", "Net\nSell_2", "Net Margin_2", 
         "MSRP_2", "IMU_2", "AUR_2", "AUR\nDiscount_2", "AUR\nGM%_2", "1st MKD_2", "MKD NM%_2"]:
@@ -1521,20 +1522,24 @@ def preprocess(ws, metal_df,labour_df,shape_qty_df):
     ws.auto_filter.ref = filter_range    
 
 
-
-
-def fill_style_column(sheet, start_row=13, style_column=2):
-    """Fill down product names or descriptions in the specified column to ensure proper filtering."""
-    current_value = None  # Track the current value
+def fill_style_column_dynamic(sheet, start_row=13, style_column=2):
+    """
+    Fill down product names or descriptions using dynamic formulas that reference
+    the closest non-empty cell above, without copying the header.
+    """
+    col_letter = get_column_letter(style_column)
+    current_value = None
 
     for row in range(start_row, sheet.max_row + 1):
-        cell_value = sheet.cell(row, style_column).value
+        cell = sheet.cell(row, style_column)
 
-        if cell_value:  # If a value exists, update the tracker
-            current_value = cell_value
-        elif current_value:  # If the cell is empty, fill with the current value
-            sheet.cell(row, style_column).value = current_value
-
+        # If cell has a value, update the tracker
+        if cell.value:
+            current_value = cell.value
+        # If cell is empty and there is a value above, apply dynamic reference
+        elif current_value is not None:
+            cell.value = f"={col_letter}{row-1}"  # Reference the cell above
+            
 def apply_conditional_formatting(sheet, column_letter, start_row=13):
     """Apply conditional formatting to hide duplicate values in the specified column."""
     last_row = sheet.max_row
@@ -1548,6 +1553,26 @@ def apply_conditional_formatting(sheet, column_letter, start_row=13):
     # Apply the rule to the specified column from the start row to the last row
     sheet.conditional_formatting.add(f"{column_letter}{start_row}:{column_letter}{last_row}", rule)
 
+
+def truncate_visible_text(sheet, column_letter, start_row=13, max_length=20):
+    """Truncate text to fit within a limited column width but keep full text in the formula bar."""
+    last_row = sheet.max_row
+
+    for row in range(start_row, last_row + 1):
+        cell = sheet[f"{column_letter}{row}"]
+        full_text = cell.value
+
+        if full_text and len(full_text) > max_length:
+            # Truncate visible text and add ellipses
+            truncated_text = full_text[:max_length - 3] + "..."
+            cell.value = truncated_text  # Display truncated text in the cell
+
+        # Set alignment and fixed row height
+        cell.alignment = Alignment(wrap_text=False, vertical="top")
+        sheet.row_dimensions[row].height = 15  # Keep single-line height
+
+    # Set a reasonable column width to avoid overlap
+    sheet.column_dimensions[column_letter].width = 30  # Adjust as needed
 def adjust_images_with_xlwings(input_file, output_file):
     """Adjust image properties using xlwings and apply formatting across all sheets."""
     try:
@@ -1557,17 +1582,17 @@ def adjust_images_with_xlwings(input_file, output_file):
         # Iterate through all sheets to fill down and apply conditional formatting
         for ws_openpyxl in wb_openpyxl.worksheets:
             # Fill down 'STYLE #' column values (column 2)
-            fill_style_column(ws_openpyxl, start_row=13, style_column=2)
+            fill_style_column_dynamic(ws_openpyxl, start_row=13, style_column=2)
 
             # Fill down 'DESCRIPTION' column values (column 3)
-            fill_style_column(ws_openpyxl, start_row=13, style_column=3)
+            fill_style_column_dynamic(ws_openpyxl, start_row=13, style_column=3)
 
             # Apply conditional formatting to 'STYLE #' column (column B)
             apply_conditional_formatting(ws_openpyxl, column_letter='B', start_row=13)
 
             # Apply conditional formatting to 'DESCRIPTION' column (column C)
             apply_conditional_formatting(ws_openpyxl, column_letter='C', start_row=13)
-
+            #truncate_visible_text(ws_openpyxl, column_letter='C', start_row=13)
         # Save intermediate result
         wb_openpyxl.save(output_file)
         wb_openpyxl.close()  # Close the openpyxl workbook
@@ -1593,3 +1618,4 @@ def adjust_images_with_xlwings(input_file, output_file):
 
     except Exception as e:
         print(f"An error occurred: {e}")
+
