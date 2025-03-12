@@ -15,7 +15,7 @@ from multiprocessing import Manager, Pool
 import json 
 from .config import *
 import numpy as np
-
+from .adddatabase import save_macys_projection_receipts, save_monthly_forecasts
 def make_zip_and_delete(folder_path):
     folder_path = os.path.normpath(folder_path)
     zip_file_path = os.path.normpath(f'{folder_path}.zip')
@@ -87,6 +87,50 @@ def read_excel_sheet(file_details):
     file_path, sheet_name, kwargs = file_details
     return sheet_name, pd.read_excel(file_path, sheet_name=sheet_name, **kwargs)
 
+
+def parse_date(date_value):
+    """
+    Parses a date value (string or pandas Timestamp) into a datetime.date object.
+    Handles multiple formats and NaT (Not a Time) values.
+    """
+    if pd.isna(date_value) or date_value in ["NaT", None, ""]:
+        return None  # Handle missing or NaT values
+
+    # If the value is already a pandas Timestamp, convert it to date
+    if isinstance(date_value, pd.Timestamp):
+        return date_value.date()
+
+    # Ensure the value is a string for parsing
+    date_str = str(date_value).strip()
+
+    try:
+        # Try to parse "M/D/YYYY" or "MM/DD/YYYY" format
+        return datetime.strptime(date_str.split()[0], "%m/%d/%Y").date()
+    except ValueError:
+        try:
+            # Try to parse "M/D/YYYY H:MM:SS AM/PM" format
+            return datetime.strptime(date_str.split(' ', 1)[0], "%m/%d/%Y").date()
+        except ValueError:
+            try:
+                # Try parsing "YYYY-MM-DD HH:MM:SS" format (e.g., "2022-02-26 00:00:00")
+                return datetime.strptime(date_str.split()[0], "%Y-%m-%d").date()
+            except ValueError:
+                # Try various other possible formats
+                date_formats = ["%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"]
+                for fmt in date_formats:
+                    try:
+                        return datetime.strptime(date_str.split()[0], fmt).date()
+                    except ValueError:
+                        continue
+                
+                # If all parsing attempts fail, print a warning and return None
+                print(f"Could not parse date: {date_value}")
+                return None
+            except Exception as e:
+                print(f"Error parsing date {date_value}: {e}")
+                return None
+            
+
 # multiprocess pool for reading excel 
 def process_sheet(sheet_name, config, input_path):
     """
@@ -102,6 +146,36 @@ def process_sheet(sheet_name, config, input_path):
         print(f"Error processing sheet {sheet_name}: {e}")
         return sheet_name, None
 
+def safe_int(value):
+    """Convert value to int or return None if conversion fails"""
+    if pd.isna(value):
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+            
+def safe_float(value):
+    """Convert value to float or return None if conversion fails"""
+    if pd.isna(value):
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+        
+def safe_str(value, max_length=None):
+    """Convert value to string, respecting max_length if provided"""
+    if pd.isna(value):
+        return None
+    try:
+        result = str(value).strip()
+        if max_length and len(result) > max_length:
+            result = result[:max_length]
+        return result
+    except:
+        return None
+            
 # multiprocess pool for generating excel 
 def process_category(args):
     """
@@ -476,6 +550,121 @@ def process_category(args):
         Macys_Recpts_matching_row=Macys_Recpts.loc[Macys_Recpts['PID'].str.upper() == pid_value]
         Macys_Spring_Proj_Notes =  f"Macy's Spring Proj Notes: {Macys_Recpts_matching_row['ACTION'].iloc[0]}" if not Macys_Recpts_matching_row.empty else "Macy's Spring Proj Notes: "
         Planner_Response=matching_row['Planner Response'].iloc[0] 
+        
+
+       
+            
+        from .models import ProductDetail
+        print("Door_count_Updated",Door_count_Updated)
+        print("first_reciept_date",st_Rec_Date)
+        print("Last_Rec_Date",Last_Rec_Date)
+        print("first_live_date",st_Live)
+        print("Last_Proj_Review_Date",Last_Proj_Review_Date)
+
+        product = ProductDetail(
+            product_id=pid_value,
+            product_description=safe_str(PID_Desc),
+            
+            # Main identifiers
+            blu=safe_str(RLJ),
+            mkst=safe_str(MKST),
+            currect_fc_index=safe_str(Current_FC_Index),
+            
+            # Classification fields
+            safe_non_safe=safe_str(Safe_Non_Safe),
+            item_code=safe_str(Item_Code),
+            # Note: item_status is commented out in the model but you're creating an Item_Status variable
+            
+            # Store information
+            current_door_count=safe_int(Door_Count),
+            last_store_count=safe_int(Last_Str_Cnt),
+            door_count_updated=parse_date(Door_count_Updated),
+            store_model=safe_int(Store_Model),
+            com_model=safe_int(Com_Model),
+            
+            # Inventory and forecast fields
+            holiday_build_fc=safe_int(Holiday_Bld_FC),
+            macys_onhand=safe_int(MCYOH),
+            oo=safe_int(OO),
+            in_transit=safe_int(nav_OO),
+            month_to_date_shipment=safe_int(MTD_SHIPMENTS),
+            lastweek_shipment=safe_int(LW_Shipments),
+            planned_weeks_of_stock=safe_int(Wks_of_Stock_OH),
+            weeks_of_projection=safe_int(Wks_of_on_Proj),
+            last_4weeks_shipment=safe_int(Last_3Wks_Ships),
+            
+            # Vendor information
+            vendor_name=safe_str(Vendor_Name),
+            min_order=safe_int(Min_order),
+            
+            # Projection fields
+            rl_total=safe_int(Proj),
+            net_projection=safe_int(Net_Proj),
+            unalloc_order=safe_int(Unalloc_Orders),
+            
+            # Distribution center fields
+            ma_bin=safe_int(RLJ_OH),
+            fldc=safe_int(FLDC),
+            wip_quantity=safe_int(WIP),
+            
+            # Status fields
+            md_status=safe_str(MD_Status_MZ1),
+            replanishment_flag=safe_str(Repl_Flag),
+            mcom_replanishment=safe_str(MCOM_RPL),
+            pool_stock=safe_int(Pool_stock),
+            
+            # Date fields
+            first_reciept_date=parse_date(st_Rec_Date),
+            last_reciept_date=parse_date(Last_Rec_Date),
+            item_age=safe_int(Item_Age),
+            first_live_date=parse_date(st_Live),
+            
+            # Cost and retail fields
+            this_year_last_cost=safe_float(TY_Last_Cost),
+            macys_owned_retail=safe_float(Own_Retail),
+            awr_first_ticket_retail=safe_float(AWR_1st_Tkt_Ret),
+            
+            # Policy and configuration fields
+            metal_lock=safe_float(Metal_Lock),
+            mfg_policy=safe_str(MFG_Policy),
+            
+            # KPI fields
+            kpi_data_updated=safe_str(KPI_Data_Updated),
+            kpi_door_count=safe_int(KPI_Door_count),
+            
+            # Sales fields - these are commented out in your model but you're extracting them
+            # standard_sale=STD_Sales,
+            # last_year_standard_sale=LY_STD_SALES,
+            
+            # Location fields
+            out_of_stock_location=safe_int(OOS_Locs),
+            suspended_location_count=safe_int(Suspended_Loc_Count),
+            live_site=safe_str(Live_Site),
+            
+            # Product categorization fields
+            masterstyle_description=safe_str(Masterstyle_Desc),
+            masterstyle_id=safe_str(MstrSt_ID),
+
+            department_id=safe_int(Dpt_ID),
+            department_description=safe_str(Dpt_Desc),
+
+            subclass_id=safe_int(SC_ID),
+            subclass_decription=safe_str(SC_Desc) ,
+            webid_description=safe_str(Prod_Desc),
+            
+            # Marketing fields
+            v2c=safe_str(V2C),
+            marketing_id=safe_str(Mktg_ID),
+            std_store_return=safe_float(STD_Store_Rtn),
+            
+            # Planning fields
+            last_project_review_date=parse_date(Last_Proj_Review_Date),
+            macy_spring_projection_note=safe_str(Macys_Spring_Proj_Notes),
+            planner_response=safe_str(Planner_Response)
+        )
+
+        product.save()
+        print(f"Product {pid_value} saved successfully")	
 
         Nav_Feb=matching_row['Feb'].iloc[0]
         Nav_Mar=matching_row['Mar'].iloc[0]
@@ -550,7 +739,21 @@ def process_category(args):
             OO_Total_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OO Total Units'].sum()
             OO_MCOM_Total_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OO Total Units'].sum()
             LY_Receipts[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
+
+
         index_df.columns = index_df.columns.str.strip().str.upper()
+
+
+
+        productmain = ProductDetail.objects.get(product_id=pid_value)
+        # Save data to DB
+        from datetime import datetime
+        current_year = datetime.now().year
+        save_macys_projection_receipts(productmain, matching_row, current_year)
+        save_monthly_forecasts(productmain, current_year, months, TY_Unit_Sales, LY_Unit_Sales, LY_OH_Units, TY_OH_Units, TY_Receipts, LY_Receipts, TY_MCOM_Unit_Sales, LY_MCOM_Unit_Sales, TY_OH_MCOM_Units, LY_MCOM_OH_Units, PTD_TY_Sales, LY_PTD_Sales, MCOM_PTD_TY_Sales, MCOM_PTD_LY_Sales, OO_Total_Units, OO_MCOM_Total_Units)
+
+        print("Product Details saved successfully for PID: ",pid_value)
+
         print("Current_FC_Index",Current_FC_Index)
         if pd.isna(Current_FC_Index):
             Current_FC_Index = "Dia"
