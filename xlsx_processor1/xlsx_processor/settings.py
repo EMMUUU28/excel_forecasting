@@ -32,10 +32,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'corsheaders',
     'api',
     'forecast',
 ]
+
+REST_FRAMEWORK = {
+    # YOUR SETTINGS
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -90,10 +96,10 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
-        'OPTIONS': {
-            'sslmode': 'require',  # Secure connection
-            'sslrootcert': env('DB_SSL_KEY'),  # SSL certificate
-        }
+        # 'OPTIONS': {
+        #     'sslmode': 'require',  # Secure connection
+        #     'sslrootcert': env('DB_SSL_KEY'),  # SSL certificate
+        # }
     }
 }
 

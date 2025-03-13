@@ -1,5 +1,4 @@
 import os
-from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 import time
@@ -10,7 +9,10 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import FileResponse
 from rest_framework import status
-
+from .models import ProductDetail, MonthlyForecast
+from rest_framework import viewsets
+from django.shortcuts import get_object_or_404
+from .serializers import ProductDetailSerializer, MonthlyForecastSerializer
 
 
 
@@ -75,3 +77,49 @@ class DownloadFileAPIView(APIView):
                                 as_attachment=True, filename=os.path.basename(full_file_path))
 
         return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ProductDetailViewSet(viewsets.ViewSet):
+    def retrieve(self, request, pk=None):
+        # Fetch product details
+        product = get_object_or_404(ProductDetail, product_id=pk)
+        product_serializer = ProductDetailSerializer(product)
+        
+        # Fetch forecasts
+        forecasts = MonthlyForecast.objects.filter(product=product)
+        forecast_serializer = MonthlyForecastSerializer(forecasts, many=True)
+        
+        return Response({
+            "product_details": product_serializer.data,
+            "monthly_forecast": forecast_serializer.data
+        })
+    
+    def update(self, request, pk=None):
+        # Fetch product details
+        product = get_object_or_404(ProductDetail, product_id=pk)
+        product_serializer = ProductDetailSerializer(product, data=request.data.get("product_details", {}), partial=True)
+        
+        if product_serializer.is_valid():
+            product_serializer.save()
+        else:
+            return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Fetch and update forecasts
+        forecast_data = request.data.get("monthly_forecast", [])
+        for forecast in forecast_data:
+            forecast_instance = MonthlyForecast.objects.filter(product=product, variable_name=forecast.get("variable_name"), year=forecast.get("year")).first()
+            if forecast_instance:
+                forecast_serializer = MonthlyForecastSerializer(forecast_instance, data=forecast, partial=True)
+            else:
+                forecast["product"] = product.product_id
+                forecast_serializer = MonthlyForecastSerializer(data=forecast)
+            
+            if forecast_serializer.is_valid():
+                forecast_serializer.save()
+            else:
+                return Response(forecast_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({
+            "product_details": product_serializer.data,
+            "monthly_forecast": MonthlyForecastSerializer(MonthlyForecast.objects.filter(product=product), many=True).data
+        })
