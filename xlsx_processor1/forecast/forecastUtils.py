@@ -1,7 +1,6 @@
 import os 
 import zipfile 
 import shutil
-import datetime
 from calendar import monthrange
 from datetime import datetime,timedelta
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -16,6 +15,12 @@ import json
 from .config import *
 import numpy as np
 from .adddatabase import save_macys_projection_receipts, save_monthly_forecasts
+import logging
+from .models import MonthlyForecast,ProductDetail
+# Set up logging configuration
+logging.basicConfig(filename=r'all_file.log', level=logging.INFO,
+                    format='%(asctime)s:%(levelname)s:%(message)s',
+                    filemode='w')
 def make_zip_and_delete(folder_path):
     folder_path = os.path.normpath(folder_path)
     zip_file_path = os.path.normpath(f'{folder_path}.zip')
@@ -225,32 +230,37 @@ def process_category(args):
     # Use the original code logic for processing categories here.
     print("Madhaveeeeeeeee ",year_of_previous_month,last_year_of_previous_month)
     print(f"Processing Category: {category} with Code: {code} and Num Products: {num_products}")
-
-    output_file = f"{category}{code}"
-    output_file_path = os.path.join(file_path, f'{output_file}.xlsx')
-
-    # Initialize workbook and create sheets
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = category
-    ws_index = wb.create_sheet(title="Index")
-    ws_month = wb.create_sheet(title="Month")
-    ws_dropdown = wb.create_sheet(title="DropdownData")
-    store_products=[]
-    birthstone_list=[]
-    notify_macys=[]
-    pids_below_door_count = []
-
-
-    # Loop through products to generate PIDs
     data = [
         ["", "TY", year_of_previous_month, "LY", last_year_of_previous_month, "Season", season, "Current Year", "Month", current_month, current_month_number, "Week", previous_week_number, "", "MAY-SEP", "", "", "Last Completed Month", last_month_of_previous_month_numeric, "", "Use EOM Actual?", rolling_method],
         ["", "Count of Items", "", 8215, "", "", "", "Last SP / FA Months", "Month", "Jul", "", "Jan", 12, "Sorted by:", "Dept Grouping >Class ID", "", "", ""],
         ["", "", "", "", "", "", "", "# of Wks in Mth", feb_weeks, mar_weeks, apr_weeks, may_weeks, jun_weeks, jul_weeks, aug_weeks, sep_weeks, oct_weeks, nov_weeks, dec_weeks, jan_weeks],
         ["", category.upper(), code, "", "Avg Sales 1st & last Mth", 8, 11, "Month #", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, "", "", ""]
     ]
+    output_file_path = f"{category}{code}.xlsx"
+    output_file = os.path.join(file_path, f'{output_file_path}.xlsx')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = category
+    ws_index = wb.create_sheet(title="Index")
+    ws_month = wb.create_sheet(title="Month")
+    ws_dropdown = wb.create_sheet(title="DropdownData")
+    all_products=[]
+    com_products=[]
+    store_products=[]
+    pids_below_door_count_alert = []
+    added_macys_proj_receipts_alert =[]
+    notify_macys_alert=[]
+    upcoming_birthstone_products = []
+    all_birthstone_products = []
+    min_order_alert = []
+    
+
+
+    # Loop through products to generate PIDs
+
     # Step 4: Populate Worksheet with Data
-    for row_num, row_data in enumerate(data, 1):
+    for row_num, row_data in enumerate( data, 1):
         for col_num, value in enumerate(row_data, 1):
             cell = ws.cell(row=row_num, column=col_num, value=value)
             cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -261,7 +271,7 @@ def process_category(args):
 # Perform a lookup in 'report grouping'
     lookup_value_c2 = report_grouping_df.loc[
     report_grouping_df[0].str.upper() == lookup_key.upper(), 3
-    ].iloc[0]
+].iloc[0]
     ws['C2'] = lookup_value_c2
     ws['D2'] = "=C2*51+4"
     ws['K1'] = "=VLOOKUP(J1,Month!A:B,2,0)"
@@ -328,25 +338,68 @@ def process_category(args):
 
 
 
+    ALL_VALUES = [
+        "PID/BLU/MKST", "Current FC Index", "(TY/LY) STD Sales Index/12M FC", "STD Trend / 12M FC",
+        "Item Status/Forecasting Method/Safe", "Current Str Cnt/Last Str Cnt/Last Updated",
+        "Store Model/Com Model/TTL Model", "MA Proj/Proj Ball/Holiday Bd FC",
+        "MCY/OH/OH in Transit/MTD Ships/LW Ships", "Planned WOS/WOP/Wkly Avg Sale/Last 4 Wks Ships",
+        "Actual WOS/WOP/Real OOS Loc", "Excess Proj Qty & $ / Recall Wks of Poj & Qty",
+        "Proj Qty & $ to Release / Note", "Vendor/Min order", "RL TTL/Net Proj/ORD Unalloc/+/− to Model",
+        "MA Bin/FLDC/WIP QTY/REPLN HOLD DATE", "WIP Demand", "MD Status/Store & Mcom Repl",
+        "TTL Last Repl/Age/Mths Active", "Last Cost/Owned/TKT Ret/GM/Actual GM", "Metal Lock/MFG Policy",
+        "KPI DATA", "Last KPI Door count", "Diff to Current Door",
+        "Out of Stock Locations", "Suspended Location count",
+        "Click to View online", "DEPT #", "Sub Class", "Masterstyle", "PID Desc",
+        "COM 1st Live/Live Site/V2C/WebID/STD Rtn", "Web ID Description",
+        "Last Reviewed Date/Code/Qty to Enter", "Current Review Comments"
+    ]
 
+    H_VALUES = [
+        'ROLLING 12M FC', 'Index', 'FC by Index', 'FC by Trend', 'Recommended FC', 'Planned FC',
+        'Planned Shipments', 'Planned EOH (Cal)', 'Gross Projection (Nav)', 'Macys Proj Receipts',
+        'Planned Sell thru %', f"TOTAL {year_of_previous_month}",'Total Sales Units', 'Store Sales Units', 'Com Sales Units',
+        'COM % to TTL (Sales)', 'TOTAL EOM OH', 'Store EOM OH', 'COM EOM OH',
+        'COM % to TTL (EOH)', 'Omni Sales $', 'COM Sales $', 'Omni AUR/% Diff Own',
+        'Omni Sell Thru %', 'Store SellThru %', 'Omni Turn', 'Store turn',
+        'TY Store Sales U vs LY', 'TY COM sales U vs LY', 'TY Store EOH vs LY',
+        'Omni OO Units', 'COM OO Units', 'Omni Receipts',    f"TOTAL {last_year_of_previous_month}",
+        "Total Sales Units",
+        "Store Sales Units",
+        "Com Sales Units",
+        "COM % to TTL (Sales)",
+        "TOTAL EOM OH",
+        "Store EOM OH",
+        "COM EOM OH",
+        "COM % to TTL (EOH)",
+        "Omni Receipts",
+        "Omni Sell Thru %",
+        "Store SellThru %",
+        "Omni Turn",
+        "Store Turn",
+        "Omni Sales $",
+        "COM Sales $",
+        "Omni AUR/% Diff Own"
+    ]
 
+    MONTHLY_VALUES = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT',
+                    'NOV', 'DEC', 'JAN', 'ANNUAL', 'SPRING', 'FALL']
     def apply_round_format(ws, cell_ranges, decimal_places):
-            for cell_range in cell_ranges:
-                # Check if the cell range is a single cell
-                if ":" in cell_range:
-                    # This is a range, so we can iterate through it
-                    for row in ws[cell_range]:
-                        for cell in row:
-                            # Check if cell contains a formula by verifying if the value starts with "="
-                            if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
-                                # Wrap formula in ROUND with the specified decimal places
-                                cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
-                else:
-                    # This is a single cell reference
-                    cell = ws[cell_range]
-                    if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
-                        # Wrap formula in ROUND with the specified decimal places
-                        cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
+        for cell_range in cell_ranges:
+            # Check if the cell range is a single cell
+            if ":" in cell_range:
+                # This is a range, so we can iterate through it
+                for row in ws[cell_range]:
+                    for cell in row:
+                        # Check if cell contains a formula by verifying if the value starts with "="
+                        if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
+                            # Wrap formula in ROUND with the specified decimal places
+                            cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
+            else:
+                # This is a single cell reference
+                cell = ws[cell_range]
+                if cell.value and isinstance(cell.value, str) and cell.value.startswith("="):
+                    # Wrap formula in ROUND with the specified decimal places
+                    cell.value = f"=ROUND({cell.value[1:]}, {decimal_places})"
 
     def apply_format(ws, cell_ranges, number_format):
         for cell_range in cell_ranges:
@@ -360,8 +413,6 @@ def process_category(args):
                 # This is a single cell
                 cell = ws[cell_range]
                 cell.number_format = number_format
-
-
 
 
     # Open the source workbook
@@ -380,6 +431,22 @@ def process_category(args):
     # Step 6: Apply Filters to A3:P3
     ws_index.auto_filter.ref = "A3:P3"
 
+
+    month_data = [
+        ["All", ""],
+        ["Feb", 1],
+        ["Mar", 2],
+        ["Apr", 3],
+        ["May", 4],
+        ["Jun", 5],
+        ["Jul", 6],
+        ["Aug", 7],
+        ["Sep", 8],
+        ["Oct", 9],
+        ["Nov", 10],
+        ["Dec", 11],
+        ["Jan", 12],
+    ]
 
     # Write the data to the "Month" sheet
     for row_num, (month, number) in enumerate(month_data, start=1):
@@ -480,11 +547,16 @@ def process_category(args):
         start_row = 5 + (51 * loop)
         g_value = loop + 1
         cross_ref = f"{g_value}{category.upper()}{code}"  # Ensure no spaces in category
-        # Find the matching row
+        #Find the matching row
         matching_row = planning_df.loc[planning_df['Cross ref'].str.upper() == cross_ref]
-
+        #matching_row = planning_df.loc[planning_df['PID'].str.upper() == pid]
         pid_value = matching_row['PID'].iloc[0]
-        print(pid_value)
+        logging.info('PID : %s', pid_value)
+
+
+        all_products.append(pid_value)
+
+
         RLJ = matching_row['Adjusted RLJ Item'].iloc[0] 
         MKST = matching_row['Mkst'].iloc[0] # Get the first matching PID
         Current_FC_Index = matching_row['FC Index'].iloc[0] # Get the first matching PID
@@ -528,8 +600,8 @@ def process_category(args):
         KPI_Data_Updated=matching_row['KPI Data Updated'].iloc[0]
         KPI_Door_count=matching_row['KPI Door count'].iloc[0]
         TBL_Planning_VerticalReport__3_matching_row=TBL_Planning_VerticalReport__3.loc[TBL_Planning_VerticalReport__3['PID'].str.upper() == pid_value]
-        STD_Sales = TBL_Planning_VerticalReport__3_matching_row['STD SALES'].iloc[0]
-        LY_STD_SALES = TBL_Planning_VerticalReport__3_matching_row['LY STD SALES'].iloc[0] 
+        #STD_Sales = TBL_Planning_VerticalReport__3_matching_row['STD SALES'].iloc[0]
+        #LY_STD_SALES = TBL_Planning_VerticalReport__3_matching_row['LY STD SALES'].iloc[0] 
         OOS_Locs=matching_row['OOS Locs'].iloc[0]
         Suspended_Loc_Count=matching_row['Suspended Loc Count'].iloc[0]
         Masterstyle_Desc=matching_row['Masterstyle Desc'].iloc[0]
@@ -550,121 +622,6 @@ def process_category(args):
         Macys_Recpts_matching_row=Macys_Recpts.loc[Macys_Recpts['PID'].str.upper() == pid_value]
         Macys_Spring_Proj_Notes =  f"Macy's Spring Proj Notes: {Macys_Recpts_matching_row['ACTION'].iloc[0]}" if not Macys_Recpts_matching_row.empty else "Macy's Spring Proj Notes: "
         Planner_Response=matching_row['Planner Response'].iloc[0] 
-        
-
-       
-            
-        from .models import ProductDetail
-        print("Door_count_Updated",Door_count_Updated)
-        print("first_reciept_date",st_Rec_Date)
-        print("Last_Rec_Date",Last_Rec_Date)
-        print("first_live_date",st_Live)
-        print("Last_Proj_Review_Date",Last_Proj_Review_Date)
-
-        product = ProductDetail(
-            product_id=pid_value,
-            product_description=safe_str(PID_Desc),
-            
-            # Main identifiers
-            blu=safe_str(RLJ),
-            mkst=safe_str(MKST),
-            currect_fc_index=safe_str(Current_FC_Index),
-            
-            # Classification fields
-            safe_non_safe=safe_str(Safe_Non_Safe),
-            item_code=safe_str(Item_Code),
-            # Note: item_status is commented out in the model but you're creating an Item_Status variable
-            
-            # Store information
-            current_door_count=safe_int(Door_Count),
-            last_store_count=safe_int(Last_Str_Cnt),
-            door_count_updated=parse_date(Door_count_Updated),
-            store_model=safe_int(Store_Model),
-            com_model=safe_int(Com_Model),
-            
-            # Inventory and forecast fields
-            holiday_build_fc=safe_int(Holiday_Bld_FC),
-            macys_onhand=safe_int(MCYOH),
-            oo=safe_int(OO),
-            in_transit=safe_int(nav_OO),
-            month_to_date_shipment=safe_int(MTD_SHIPMENTS),
-            lastweek_shipment=safe_int(LW_Shipments),
-            planned_weeks_of_stock=safe_int(Wks_of_Stock_OH),
-            weeks_of_projection=safe_int(Wks_of_on_Proj),
-            last_4weeks_shipment=safe_int(Last_3Wks_Ships),
-            
-            # Vendor information
-            vendor_name=safe_str(Vendor_Name),
-            min_order=safe_int(Min_order),
-            
-            # Projection fields
-            rl_total=safe_int(Proj),
-            net_projection=safe_int(Net_Proj),
-            unalloc_order=safe_int(Unalloc_Orders),
-            
-            # Distribution center fields
-            ma_bin=safe_int(RLJ_OH),
-            fldc=safe_int(FLDC),
-            wip_quantity=safe_int(WIP),
-            
-            # Status fields
-            md_status=safe_str(MD_Status_MZ1),
-            replanishment_flag=safe_str(Repl_Flag),
-            mcom_replanishment=safe_str(MCOM_RPL),
-            pool_stock=safe_int(Pool_stock),
-            
-            # Date fields
-            first_reciept_date=parse_date(st_Rec_Date),
-            last_reciept_date=parse_date(Last_Rec_Date),
-            item_age=safe_int(Item_Age),
-            first_live_date=parse_date(st_Live),
-            
-            # Cost and retail fields
-            this_year_last_cost=safe_float(TY_Last_Cost),
-            macys_owned_retail=safe_float(Own_Retail),
-            awr_first_ticket_retail=safe_float(AWR_1st_Tkt_Ret),
-            
-            # Policy and configuration fields
-            metal_lock=safe_float(Metal_Lock),
-            mfg_policy=safe_str(MFG_Policy),
-            
-            # KPI fields
-            kpi_data_updated=safe_str(KPI_Data_Updated),
-            kpi_door_count=safe_int(KPI_Door_count),
-            
-            # Sales fields - these are commented out in your model but you're extracting them
-            # standard_sale=STD_Sales,
-            # last_year_standard_sale=LY_STD_SALES,
-            
-            # Location fields
-            out_of_stock_location=safe_int(OOS_Locs),
-            suspended_location_count=safe_int(Suspended_Loc_Count),
-            live_site=safe_str(Live_Site),
-            
-            # Product categorization fields
-            masterstyle_description=safe_str(Masterstyle_Desc),
-            masterstyle_id=safe_str(MstrSt_ID),
-
-            department_id=safe_int(Dpt_ID),
-            department_description=safe_str(Dpt_Desc),
-
-            subclass_id=safe_int(SC_ID),
-            subclass_decription=safe_str(SC_Desc) ,
-            webid_description=safe_str(Prod_Desc),
-            
-            # Marketing fields
-            v2c=safe_str(V2C),
-            marketing_id=safe_str(Mktg_ID),
-            std_store_return=safe_float(STD_Store_Rtn),
-            
-            # Planning fields
-            last_project_review_date=parse_date(Last_Proj_Review_Date),
-            macy_spring_projection_note=safe_str(Macys_Spring_Proj_Notes),
-            planner_response=safe_str(Planner_Response)
-        )
-
-        product.save()
-        print(f"Product {pid_value} saved successfully")	
 
         Nav_Feb=matching_row['Feb'].iloc[0]
         Nav_Mar=matching_row['Mar'].iloc[0]
@@ -739,91 +696,89 @@ def process_category(args):
             OO_Total_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OO Total Units'].sum()
             OO_MCOM_Total_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OO Total Units'].sum()
             LY_Receipts[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
-
-
         index_df.columns = index_df.columns.str.strip().str.upper()
-
-
-
-        productmain = ProductDetail.objects.get(product_id=pid_value)
-        # Save data to DB
-        from datetime import datetime
-        current_year = datetime.now().year
-        save_macys_projection_receipts(productmain, matching_row, current_year)
-        save_monthly_forecasts(productmain, current_year, months, TY_Unit_Sales, LY_Unit_Sales, LY_OH_Units, TY_OH_Units, TY_Receipts, LY_Receipts, TY_MCOM_Unit_Sales, LY_MCOM_Unit_Sales, TY_OH_MCOM_Units, LY_MCOM_OH_Units, PTD_TY_Sales, LY_PTD_Sales, MCOM_PTD_TY_Sales, MCOM_PTD_LY_Sales, OO_Total_Units, OO_MCOM_Total_Units)
-
-        print("Product Details saved successfully for PID: ",pid_value)
-
-        print("Current_FC_Index",Current_FC_Index)
+        logging.info("Current_FC_Index : %s ",Current_FC_Index)
         if pd.isna(Current_FC_Index):
             Current_FC_Index = "Dia"
 
         index_row_data = index_df.loc[index_df['INDEX'].astype(str).str.lower() == Current_FC_Index.lower()]
-
+        print("index_row_data",index_row_data)	
         index_value = {}
         # Loop through each month and fetch its value
         for month in months:
             index_value[month] = index_row_data[month].iloc[0] if not index_row_data.empty else 0
+        print("index_value",index_value)	
+
+
 
                         #algorithm
-
-                     #algorithm
         #######step1####################
         # Function to get Lead Time by PID
         def get_lead_time_by_pid(pid_value,current_date):
-                # Find the Vendor for the given PID
-                vendor = master_sheet.loc[master_sheet['PID'] == pid_value, 'Vendor Name'].values[0]
-                print('vendor',vendor)
-                # Find the Lead Time for the Vendor
-                country = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Country of Origin']
-                print('country',country)
-                if not country.empty:
-                    country = country.values[0]  # Access the first value
-                else:
-                    country = None  # Set to None if empty
+            # Find the Vendor for the given PID
+            vendor = master_sheet.loc[master_sheet['PID'] == pid_value, 'Vendor Name'].values[0]
+            logging.info('Current Date  : %s ',current_date)
+            logging.info('Vendor : %s',vendor)
+            # Find the Lead Time for the Vendor
+            country = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Country of Origin']
+            if not country.empty:
+                country = country.values[0]  # Access the first value
+            else:
+                country = None  # Set to None if empty
+            logging.info('Country : %s',country)
+        
+
+            lead_time = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Lead Time(weeks)']
+            lead_time = lead_time.values[0] if not lead_time.empty else 8
+
+
+            if country == "South Africa" or country == "DRL":
+                logging.info("Adding 2 weeks grace in Lead time as it is DRL and South africa")
+                lead_time = lead_time + 2
+
+            if np.isnan(lead_time):
+                logging.info("Lead time is None So considering default lead time = 8")
+                lead_time=8 
+
+            logging.info("Lead time : %s",lead_time)
+
+            lead_time_days = lead_time * 7
+        
+            # Calculate the forecast date
+            forecast_date = current_date + timedelta(days=lead_time_days)
+            logging.info("Forecast date : %s",forecast_date)
+            currentdate = current_date.strftime("%Y-%m-%d")
+            forecast_lead_time_date = forecast_date.strftime("%Y-%m-%d")
+            holiday_start_date = "2025-01-22"
+            holiday_end_date = "2025-02-05"
+        
+            if country=="China" and currentdate <= "2025-02-05" and forecast_lead_time_date >= "2025-01-22":
+                logging.info("Considering china holiday for leadtime(Take lead time = 11)")
+                lead_time = 11
+            if country=="Italy" and currentdate <= "2025-08-31" and forecast_lead_time_date >= "2025-08-01":
+                logging.info("Considering italy holiday for leadtime(Take lead time = 14)")
+                lead_time = 14
             
-
-                lead_time = vendor_sheet.loc[vendor_sheet['Vendor Name'] == vendor, 'Lead Time(weeks)']
-                # Ensure a single value is selected
-                lead_time = lead_time.values[0] if not lead_time.empty else np.nan
-
-                # Check if the value is NaN and assign a default
-                lead_time = 8 if pd.isna(lead_time) else lead_time
-                print('lead_time',lead_time)
-
-                lead_time_days = lead_time * 7
             
-                # Calculate the forecast date
-                forecast_date = current_date + timedelta(days=lead_time_days)
+            # lead_time = dynamicLead(currentdate,forecast_lead_time_date,lead_time,country)
 
-                currentdate = current_date.strftime("%Y-%m-%d")
-                forecast_lead_time_date = forecast_date.strftime("%Y-%m-%d")
-                holiday_start_date = "2025-01-22"
-                holiday_end_date = "2025-02-05"
-
-
+            return lead_time
             
-                if country=="China" and currentdate <= "2025-02-05" and forecast_lead_time_date >= "2025-01-22":
-                    lead_time = 11
-                if country=="Italy" and currentdate <= "2025-08-31" and forecast_lead_time_date >= "2025-08-01":
-                    lead_time = 14
-                
-                # lead_time = dynamicLead(currentdate,forecast_lead_time_date,lead_time,country)
+        current_date = datetime.today()
+        
 
-                return lead_time
-            
-        #current_date = datetime.today()
 
-        current_date= datetime(2025,2,21)
+        # current_date = datetime(2025,3,14)
+        # print("current_date",current_date)
 
         lead_time = get_lead_time_by_pid(pid_value,current_date)
-        print('lead_time',lead_time) 
+        logging.info('Final lead_time : %s',lead_time) 
 
             # Function to get the 3-letter month abbreviation based on the month number
         # Retail calendar month sequence
         retail_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
         
-        # Print intermediate results for debugging
+        # logging.info intermediate results for debugging
         def convert_month_to_abbr(full_month):
             # Define mapping of full month names to abbreviations
             month_mapping = {
@@ -851,13 +806,12 @@ def process_category(args):
             
             # Calculate the forecast date
             forecast_date = current_date + timedelta(days=lead_time_days)
+            logging.info("Final forecast date : %s ",forecast_date)
             
             # Extract the forecast month and year
             forecast_month = forecast_date.strftime("%B")  # Full month name
             forecast_year = forecast_date.year
             forecast_month_abbr = convert_month_to_abbr(forecast_month)
-            print("forecast_month ",forecast_month_abbr)
-            print("current_month",current_month)  
 
             check = False
             # Calculate the week of the forecast month
@@ -883,29 +837,26 @@ def process_category(args):
 
         
             # Display the result
-            print(f"Forecast month is {forecast_month} {forecast_year}")
-            print(f"Week of the forecast month: Week {week_of_forecast_month}")
-            print(f"Current month is {current_date.strftime('%B')} {current_date.year}")
-            print(f"Week of the current month: Week {week_of_current_month}")
-            print(f"Forecast months list: {forecast_month_list}")
+            logging.info(f"Forecast month is {forecast_month} {forecast_year}") 
+            logging.info(f"Week of the forecast month: Week {week_of_forecast_month}")
+            logging.info(f"Current month is {current_date.strftime('%B')} {current_date.year}")
+            logging.info(f"Week of the current month: Week {week_of_current_month}")
+            logging.info(f"Forecast months list: {forecast_month_list}")
 
             return forecast_month_list , week_of_forecast_month , forecast_month_abbr , check
 
 
-        if math.isnan(lead_time):
-            lead_time = 8
+
 
         forecast_months ,week_of_forecast_month ,forecast_month, check = calculate_forecast_months(lead_time,current_date,current_month)
         #forecast_months = calculate_forecast_months(lead_time,current_date)
-        #print('forecast_months',forecast_months)
+        #logging.info('forecast_months',forecast_months)
         
-        #############################print(madhavee)
+        #############################logging.info(madhavee)
         retail_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
         #Step 2 :  Find STD period###################
-        def get_std_months(current_month):
-            # Retail calendar month sequence
-            
-            
+
+        def get_std_months(current_month):            
             # Define Spring and Fall seasons
             spring_season = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"]
             fall_season = ["Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
@@ -915,8 +866,10 @@ def process_category(args):
             
             # Determine the season and the corresponding std period length
             if current_month in spring_season:
+                logging.info("Current season is : Spring , Taking previous 4 months as STD Period")
                 std_period = 4  # Last 5 months for Spring
             elif current_month in fall_season:
+                logging.info("Current season is : Fall , Taking previous 4 months as STD Period")
                 std_period = 4  # Last 3 months for Fall
             else:
                 raise ValueError("Invalid month provided.")
@@ -929,7 +882,6 @@ def process_category(args):
             
             return std_months
         
-        months_new = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
         def get_month_range(months, month_start, endMonth):
             # Find the start and end indices in the months list
             start_index = months.index(month_start)
@@ -945,6 +897,8 @@ def process_category(args):
         
             return selected_months
         
+        months_new = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']
+
 
         if month_from and month_to:
             first_month_std=convert_month_to_abbr(month_from).upper()
@@ -952,44 +906,95 @@ def process_category(args):
             std_months = get_month_range(months_new, first_month_std, last_mont_std)
         else:
             std_months = get_std_months(current_month)
+        
+       
+        
+        # std_months = get_std_months(current_month)
+        # std_months = ['Nov','Dec','Jan','Feb']
+        logging.info(std_months)
 
-        print(std_months)
         std_months_upper = [month.upper() for month in std_months]
-        # TY_Unit_Sales_list=[TY_Unit_Sales['FEB'],TY_Unit_Sales['MAR'],TY_Unit_Sales['APR'],TY_Unit_Sales['MAY'],TY_Unit_Sales['JUN'],TY_Unit_Sales['JUL'],TY_Unit_Sales['AUG'],TY_Unit_Sales['SEP'],TY_Unit_Sales['OCT'],TY_Unit_Sales['NOV'],TY_Unit_Sales['DEC'],TY_Unit_Sales['JAN']]
         STD_TY_Unit_Sales_list = [TY_Unit_Sales[month] for month in std_months_upper]
+        logging.info(f"This year unit sales for STD period : {STD_TY_Unit_Sales_list}")
+
         STD_LY_Unit_Sales_list=[LY_Unit_Sales[month] for month in std_months_upper]
-        STD_index_value=[index_value[month] for month in std_months_upper]
+        logging.info(f"Last  year unit sales for STD period : {STD_LY_Unit_Sales_list}")
+        target_months={'FEB', 'MAR', 'APR'}
+        if any(month in std_months_upper for month in target_months):
+            ac_this_year_value=year_of_previous_month
+
+            L_this_year_value=year_of_previous_month-1
+            ac_last_year_value=last_year_of_previous_month
+            L_last_year_value=last_year_of_previous_month-1
+            ac_this_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == ac_this_year_value)]
+            L_this_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == L_this_year_value)]
+            ac_last_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == ac_last_year_value)]
+            L_last_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == L_last_year_value)]
+            Ac_TY_Unit_Sales = {month: 0 for month in months}
+            L_TY_Unit_Sales = {month: 0 for month in months}
+            Ac_LY_Unit_Sales = {month: 0 for month in months}
+            L_LY_Unit_Sales = {month: 0 for month in months}
+            for month in months:
+                TY_Unit_Sales[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                Ac_TY_Unit_Sales[month] = ac_this_year_data.loc[ac_this_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                L_TY_Unit_Sales[month] = L_this_year_data.loc[L_this_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                Ac_LY_Unit_Sales[month] = ac_last_year_data.loc[ac_last_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                L_LY_Unit_Sales[month] = L_last_year_data.loc[L_last_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+
+
+            STD_TY_Unit_Sales_list = [
+            Ac_TY_Unit_Sales.get(month, L_TY_Unit_Sales.get(month, 0)) if month in ['FEB', 'MAR', 'APR']
+            else L_TY_Unit_Sales.get(month, 0)
+            for month in std_months_upper
+        ]
+            STD_LY_Unit_Sales_list=[
+            Ac_LY_Unit_Sales.get(month, L_LY_Unit_Sales.get(month, 0)) if month in ['FEB', 'MAR', 'APR']
+            else L_LY_Unit_Sales.get(month, 0)
+            for month in std_months_upper
+        ]
+
+        # TY_Unit_Sales_list=[TY_Unit_Sales['FEB'],TY_Unit_Sales['MAR'],TY_Unit_Sales['APR'],TY_Unit_Sales['MAY'],TY_Unit_Sales['JUN'],TY_Unit_Sales['JUL'],TY_Unit_Sales['AUG'],TY_Unit_Sales['SEP'],TY_Unit_Sales['OCT'],TY_Unit_Sales['NOV'],TY_Unit_Sales['DEC'],TY_Unit_Sales['JAN']]
+        STD_index_value=[round(index_value[month],2) for month in std_months_upper]
+        logging.info(f"Index percentage for STD period : {STD_index_value}")
+
         STD_index_value = sum(STD_index_value)
+        logging.info(f"Sum of index percentage for STD period  : {STD_index_value}")
+
 
         if STD_index_value:
-            month_12_fc_index = sum(STD_TY_Unit_Sales_list) / (STD_index_value )
+            month_12_fc_index = round((sum(STD_TY_Unit_Sales_list) / (STD_index_value)),0)
+            logging.info(f"Sum of index percentage is not 0 that's why 12th month forecast by index =  {month_12_fc_index}")
         else:
             month_12_fc_index = 0
-        STD_index_value=round(STD_index_value, 2)
-        print("STD Index:", STD_index_value)
-        print("Month 12 FC:", month_12_fc_index)
+            logging.info(f"Sum of index percentage is  0 that's why 12th month forecast by index =  {month_12_fc_index}")
+            
 
-        if STD_LY_Unit_Sales_list:
-            std_trend = (sum(STD_TY_Unit_Sales_list) - sum(STD_LY_Unit_Sales_list)) / sum(STD_LY_Unit_Sales_list)
+        if sum(STD_LY_Unit_Sales_list) and sum(STD_TY_Unit_Sales_list):            
+            std_trend = round(((sum(STD_TY_Unit_Sales_list) - sum(STD_LY_Unit_Sales_list)) / sum(STD_LY_Unit_Sales_list)),2)
+            logging.info(f"Sum of this year unit sales and last year unit sales is not 0 that's why std trend =  {std_trend}")
         else:
             std_trend = 0
-        std_trend=round(std_trend, 2)
-        print("std_trend:", std_trend)
+            logging.info(f"Sum of this year unit sales and last year unit sales is 0 that's why std trend =  {std_trend}")
+            
+
         # Get the door count from cell C10
         retail_months_upper = [month.upper() for month in retail_months]
+
         def check_product_type( ):
             
-            All_TY_Unit_Sales_list=[LY_Unit_Sales[month] for month in retail_months_upper]
+            All_LY_Unit_Sales_list=[LY_Unit_Sales[month] for month in retail_months_upper]
             ALL_LY_MCOM_Unit_Sales=[LY_MCOM_Unit_Sales[month] for month in retail_months_upper]
             result_list = [
                 (ly_mcom / ty_unit if ty_unit != 0 else 0)
-                for ly_mcom, ty_unit in zip(ALL_LY_MCOM_Unit_Sales, All_TY_Unit_Sales_list)
+                for ly_mcom, ty_unit in zip(ALL_LY_MCOM_Unit_Sales, All_LY_Unit_Sales_list)
             ]
             # Get the COM to TTL % Sales for this year (from I20 to T20)
 
             # Calculate the average COM to TTL % Sales for this year
             average = sum(result_list) / len(result_list) if result_list else 0 
             average_com_to_ttl_sales=average*100
+            logging.info(f"Average COM to TTL % Last Year : {average_com_to_ttl_sales}")
+            logging.info(f"KPI Door Count: {KPI_Door_count}")
 
             # Determine if the product is COM or Store based on door count and COM to TTL % Sales
             if KPI_Door_count is None or  KPI_Door_count <= 1 or average_com_to_ttl_sales > 65 or None:
@@ -999,9 +1004,11 @@ def process_category(args):
 
         is_com_product = check_product_type()
                 
-            # Print the result
-        print("Is COM Product:", is_com_product)
-        if not is_com_product:
+        logging.info(f"Is COM Product : {is_com_product}")
+
+        if is_com_product:
+            com_products.append(pid_value)
+        else:
             store_products.append(pid_value) 
 
             # #############################################
@@ -1016,6 +1023,8 @@ def process_category(args):
                 for ty_oh_unit,ty_oh_mcom  in zip(STD_TY_OH_Units_list, STD_TY_OH_MCOM_Units_list)
             ]
                 
+
+
             STD_LY_OH_Units_list = [LY_OH_Units[month] for month in std_months_upper]
             STD_LY_OH_MCOM_Units_list=[LY_MCOM_OH_Units[month] for month in std_months_upper]
 
@@ -1024,6 +1033,52 @@ def process_category(args):
                 for ly_oh_unit,ly_oh_mcom  in zip(STD_LY_OH_Units_list, STD_LY_OH_MCOM_Units_list)
             ]
 
+            if current_month  in ['Feb','Mar','Apr'] :
+                this_year_value=year_of_previous_month
+                last_year_value=last_year_of_previous_month
+                this_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == this_year_value)]
+                last_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == last_year_value)]
+                this_year_MCOM=MCOM_Data.loc[(MCOM_Data['PID'] == pid_value) & (MCOM_Data['Year'] == this_year_value)]
+                last_year_MCOM=MCOM_Data.loc[(MCOM_Data['PID'] == pid_value) & (MCOM_Data['Year'] == last_year_value)]
+                # Define months in order
+                months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+                # Initialize dictionaries to store results
+                TY_Unit_Sales = {month: 0 for month in months}
+                LY_Unit_Sales = {month: 0 for month in months}
+                LY_OH_Units = {month: 0 for month in months}
+                TY_OH_Units = {month: 0 for month in months}
+                TY_Receipts = {month: 0 for month in months}
+                TY_MCOM_Unit_Sales = {month: 0 for month in months}
+                TY_OH_MCOM_Units={month: 0 for month in months}
+                PTD_TY_Sales={month: 0 for month in months}
+                MCOM_PTD_TY_Sales={month: 0 for month in months}
+                LY_MCOM_Unit_Sales={month: 0 for month in months}
+                LY_MCOM_OH_Units = {month: 0 for month in months}
+                OO_Total_Units={month: 0 for month in months}
+                OO_MCOM_Total_Units={month: 0 for month in months}
+                LY_Receipts={month: 0 for month in months}
+                LY_PTD_Sales={month: 0 for month in months}
+                MCOM_PTD_LY_Sales={month: 0 for month in months}
+                # Sum data for each month
+                for month in months:
+                    TY_Unit_Sales[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                    LY_Unit_Sales[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                    LY_OH_Units[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'OH TY Units'].sum()
+                    TY_OH_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OH TY Units'].sum()
+                    TY_Receipts[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
+                    TY_MCOM_Unit_Sales[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                    LY_MCOM_Unit_Sales[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
+                    TY_OH_MCOM_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OH TY Units'].sum()
+                    PTD_TY_Sales[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                    LY_PTD_Sales[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                    MCOM_PTD_TY_Sales[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                    MCOM_PTD_LY_Sales[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
+                    LY_MCOM_OH_Units[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'OH TY Units'].sum()
+                    OO_Total_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OO Total Units'].sum()
+                    OO_MCOM_Total_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OO Total Units'].sum()
+                    LY_Receipts[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
+            
+            
             spring_months = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
             season = "Spring" if forecast_months[0].upper() in spring_months else "Fall"
             def calculate_column_values(s1, k1,months,f8, row4_values, row17_values, row39_values):
@@ -1052,18 +1107,38 @@ def process_category(args):
             f8=std_trend
             row4_values=[i+1 for i in range(12)]
             row17_values=[TY_Unit_Sales[month] for month in retail_months_upper]
+            logging.info(f"This year unit sales : {row17_values}")
+
+
             row39_values=[LY_Unit_Sales[month] for month in retail_months_upper]
+            logging.info(f"Last year unit sales : {row39_values}")
+
+
             fc_by_trend_all = calculate_column_values(s1, k1, retail_months_upper, f8, row4_values, row17_values, row39_values)
+            logging.info(f"Forecast by trend all month: {fc_by_trend_all}")
+
             spring_fc_by_trend_all = sum([fc_by_trend_all[month] for month in ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']])
+            logging.info(f"Forecast by trend spring sum: {spring_fc_by_trend_all}")
+
             fall_fc_by_trend_all = sum([fc_by_trend_all[month] for month in ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']])
+            logging.info(f"Forecast by trend fall sum: {fall_fc_by_trend_all}")
+            
             all_index_value=[index_value[month] for month in retail_months_upper]
+            logging.info(f"ALl month index percentage : {all_index_value}")
+
             fc_by_index_all={}
+
             for i,month in enumerate(retail_months_upper):
                 fc_by_index_all[month] = round((all_index_value[i]*month_12_fc_index),0)
 
+            logging.info(f"Forecast by index all month: {fc_by_index_all}")
 
             spring_fc_by_index_all = sum([fc_by_index_all[month] for month in ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']])
+            logging.info(f"Forecast by index spring sum: {spring_fc_by_index_all}")
+
             fall_fc_by_index_all = sum([fc_by_index_all[month] for month in ['AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']])
+            logging.info(f"Forecast by index fall sum: {fall_fc_by_index_all}")
+
             spring_months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"]
             fall_months   = ["Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
 
@@ -1082,55 +1157,69 @@ def process_category(args):
 
             fc_by_index = spring_fc_by_index_all if selected_season == "Spring" else fall_fc_by_index_all
             fc_by_trend = spring_fc_by_trend_all if selected_season == "Spring" else fall_fc_by_trend_all
-            print('selected_season',selected_season)
-            print('fc_by_index',fc_by_index)
-            print('fc_by_trend',fc_by_trend)
+
+            logging.info(f'Selected_season : {selected_season}')
+            logging.info(f'{selected_season} fc_by_index : {fc_by_index}')
+            logging.info(f'{selected_season} fc_by_trend : {fc_by_trend}')
 
             if fc_by_index is not None and fc_by_trend is not None:
                 difference = (abs(fc_by_trend - fc_by_index) / max(fc_by_index,fc_by_trend))* 100 
-            print('difference',difference)
             
-            trend_difference = (abs(fc_by_trend - fc_by_index) / max(fc_by_index,fc_by_trend))* 100 
-            print('difference',difference)
+            logging.info(f'FC by index and trend Difference : {difference}')
+            
+
 
             def find_forecasting_method_index(difference, door_count, this_year_std_store_eom_oh, month_12_fc_index):
                 # Check if the difference is more than 15%
                 if difference > 15:            
                     average_value = sum(this_year_std_store_eom_oh) / len(this_year_std_store_eom_oh)
+                    logging.info(f'Average value for store EOM OH for STD period : {average_value}')
                     loss = (door_count / average_value) - 1
-                    print("loss : ",loss)
-                    rank =Item_Code
+                    logging.info(f"Loss business percentage : {loss}")
 
-                    print('rank',rank)
+                    rank =Item_Code
+                    logging.info(f'Rank : {rank}')
+                    logging.info(f'Own Retail : {Own_Retail}')
+
                     if Own_Retail < 1000:
                         if rank == 'A' or rank == 'B':
                             loss_percent = min(loss, 0.45)  # Maximum of 45% for Rank A or B
+                            logging.info(f'Final loss percentage for rank A and B and price is less than 1000 : {loss_percent}')
                         elif rank == 'C':
                             loss_percent = min(loss, 0.15)  # Maximum of 15% for Rank C
+                            logging.info(f'Final loss percentage for rank C and price is less than 1000 : {loss_percent}')
                         else:
                             loss_percent = min(loss,0.10)  # No loss for Rank D or E
+                            logging.info(f'Final loss percentage for other rank and price is less than 1000 : {loss_percent}')
                     else:
                         loss_percent = min(loss, 0.15)
+                        logging.info(f'Final loss percentage for price is greater than 1000 : {loss_percent}')
 
-                    print('loss_percent',loss_percent)
+
 
                     month_12_fc_index = round(month_12_fc_index * (1 + loss_percent))
+                    logging.info(f'Updated 12 month FC by index : {month_12_fc_index}')
+
                     forecasting_method = "FC by Index"  # Write the value to the merged cell
+                    logging.info(f'Forecasting method : {forecasting_method} as index and trend difference is higher than 15')
                 else:
 
                     forecasting_method = "Average"  # Write the value to the merged cell
+                    logging.info(f'Forecasting method : {forecasting_method} as index and trend difference is less than 15')
                 return  forecasting_method  ,  month_12_fc_index
 
 
 
             def find_forecasting_method_trend(difference,month_12_fc_index):
-                    # Check if the difference is more than 15%
-                    if difference > 15:  
-                        forecasting_method = "FC by Trend"  # Write the value to the merged cell
-            
-                    else:
-                        forecasting_method = "Average"  # Write the value to the merged cell
-                    return  forecasting_method,month_12_fc_index
+                # Check if the difference is more than 15%
+                if difference > 15:                
+                    forecasting_method = "FC by Trend"  # Write the value to the merged cell
+                    logging.info(f'Forecasting method : {forecasting_method} as index and trend difference > 15')
+        
+                else:                        
+                    forecasting_method = "Average"  # Write the value to the merged cell
+                    logging.info(f'Forecasting method : {forecasting_method} as index and trend difference > 15')
+                return  forecasting_method,month_12_fc_index
             
             def find_method(difference,this_year_std_store_eom_oh, last_year_std_store_eom_oh, door_count, month_12_fc_index):
                 # Define the threshold percentage for "maintained"
@@ -1142,31 +1231,41 @@ def process_category(args):
                     return (average_eom_oh >= threshold * door_count) or (average_eom_oh > door_count) 
         
                 # Check if this year's and last year's Store EOM OH are maintained
+                logging.info(f"Last year store EOM OH for STD period : {last_year_std_store_eom_oh}")
+                logging.info(f"This year store EOM OH for STD period : {this_year_std_store_eom_oh}")
+
                 last_year_maintained = is_maintained(last_year_std_store_eom_oh)
                 this_year_maintained = is_maintained(this_year_std_store_eom_oh)
         
-                print("last year_maintained ", last_year_maintained)
-                print("this year maintained ", this_year_maintained)
+                logging.info(f"Last year inventory is maintained ?  {last_year_maintained}")
+                logging.info(f"This year inventory is maintained ?  {this_year_maintained}")
 
                 # Now check the three conditions:
                 if last_year_maintained and this_year_maintained:
                     # "Last Year => Store EOM OH not maintained, This Year => Store EOM OH not maintained"
+                    logging.info(f"Both year inventory is maintained so Taking Trend or Average ")
                     forecasting_method,month_12_fc_index=find_forecasting_method_trend(difference,month_12_fc_index)
                 else:
+                    logging.info(f"Last year or this year inventory is not maintained so Taking Index or Average ")
                     forecasting_method , month_12_fc_index=find_forecasting_method_index(difference, door_count, this_year_std_store_eom_oh, month_12_fc_index)
                 return forecasting_method , month_12_fc_index
 
             forecasting_method , month_12_fc_index=find_method(difference,this_year_std_store_eom_oh, last_year_std_store_eom_oh, KPI_Door_count, month_12_fc_index)
-            print('forecasting_method',forecasting_method)
-            print('month_12_fc_index',month_12_fc_index)
 
             if forecasting_method == "FC by Trend":
-                if difference > 20:
+                if std_trend < -40 :
+                    std_trend = 0
+                    f8 = 0
+                    logging.info(f"Both year inventory is maintained and also trend is very less so std trend = 0")
+                    fc_by_trend_all = calculate_column_values(s1, k1, retail_months_upper, f8, row4_values, row17_values, row39_values)
+                    logging.info(f"Updated FC by trend value : {fc_by_trend_all}")
+                if difference > 20 :
                     if fc_by_trend > fc_by_index and Own_Retail > 1000:
                         std_trend = 0
                         f8 = 0
-                        print("********************************",f8)
+                        logging.info(f"Both year inventory is maintained and also trend and index difference > 20 , SO considering std trend = 0")
                         fc_by_trend_all = calculate_column_values(s1, k1, retail_months_upper, f8, row4_values, row17_values, row39_values)
+                        logging.info(f"Updated FC by trend value : {fc_by_trend_all}")
 
 
 
@@ -1178,16 +1277,18 @@ def process_category(args):
             fc_by_average_all = {
                 key: round((fc_by_index_all[key] + fc_by_trend_all[key]) / 2) for key in fc_by_trend_all
             }
-            print('fc_by_trend_all',fc_by_trend_all)
-            print('fc_by_index_all',fc_by_index_all)
-            print('fc_by_average_all',fc_by_average_all)
+            logging.info(f"Final FC by trend value for all month : {fc_by_trend_all}")
+            logging.info(f"Final FC by index value for all month : {fc_by_index_all}")
+            logging.info(f"Final FC by average value for all month : {fc_by_average_all}")
+
             if forecasting_method == "FC by Index":
                 recommended_fc = fc_by_index_all
             elif forecasting_method == "FC by Trend":
                 recommended_fc = fc_by_trend_all
             else:
                 recommended_fc = fc_by_average_all
-            print("recommended_fc ",recommended_fc)
+            logging.info(f"Recommended_fc : {recommended_fc}")
+
 
             current_month_upper = current_month.upper()
                     # Define input data for each row
@@ -1197,12 +1298,13 @@ def process_category(args):
             row_43 = LY_OH_Units
             # Define variables
             V1 = rolling_method  
-            print('rolling_method',rolling_method) # Example: could be "YTD", "CURRENT MTH", "SPRING", etc.
+            logging.info(f'Rolling_method : {rolling_method}') # Example: could be "YTD", "CURRENT MTH", "SPRING", etc.
             K1 = current_month_number       # A reference column value (e.g., month or index)
             # List of columns (iterable from I to T in your example)
             
             # Initialize results
             planned_fc = {}
+
             # Iterate through columns and calculate values
             for idx, col in enumerate(retail_months_upper):
                 J4 = row_4[idx]  # Get value from row_4 list based on index
@@ -1227,47 +1329,40 @@ def process_category(args):
 
 
             current_month_upper = current_month.upper()
-            # Print the results dictionary
-            print("planned_fc:", planned_fc)
-            print("This Year sales",TY_Unit_Sales)
-            current_month_sales_percentage = int(percentage)
+            # logging.info the results dictionary
+            logging.info(f"planned_fc: {planned_fc}")
+            logging.info(f"This Year unit sales : {TY_Unit_Sales}")
+
+            current_month_sales_percentage = 19
+            logging.info(f"Current month sales percentage : {current_month_sales_percentage}")
+
             current_month_upper = current_month.upper()
             current_month_fc = round(TY_Unit_Sales[current_month_upper] / (current_month_sales_percentage/100))
+            logging.info(f"Current month forecast : {current_month_fc}")
+
             planned_fc[current_month_upper] =  current_month_fc if current_month_fc > 0 else 0
-            print("planned_fc_current%_re",planned_fc)
+            logging.info(f"planned_fc with current%_re : {planned_fc}")
+
             #compare
             forecast_months_upper = [month.upper() for month in forecast_months]
-            # if forecasting_method=="Average":
-                
-            #     trend_std={key:fc_by_trend_all[key] for key in forecast_months_upper}
-            #     avg_std={key:fc_by_average_all[key] for key in forecast_months_upper}
-            #     last_year_std={key:LY_Unit_Sales[key] for key in forecast_months_upper}
-            #     print("last_year sales unit for forecast month",last_year_std)
-            #     for key in last_year_std.keys():
-            #         if key in trend_std and key in avg_std:
-            #             # Calculate the difference from last_year_std
-            #             trend_diff = abs(trend_std[key] - last_year_std[key])
-            #             avg_diff = abs(avg_std[key] - last_year_std[key])
 
-            #             # Find the closest value
-            #             closest_value = trend_std[key] if trend_diff < avg_diff else avg_std[key]
-
-            #             # Update planned_fc
-            #             planned_fc[key] = closest_value
-
-            # Print updated planned_fc
-            print('planned_fc_comprewithlast',planned_fc)
             currnt_month=current_month_upper
             D13 = OO  # Replace with your value for D13
             E19 = nav_OO  # Replace with your value for E19
             in_transit=0 if D13 - E19 < 0 else D13 - E19
-            print("in_transit",in_transit)
+            logging.info(f"in_transit qty : {in_transit}")
+
             # Calculate using the logic in the Excel formula
             planned_shp=[Nav_Feb,Nav_Mar,Nav_Apr,Nav_May,Nav_Jun,Nav_Jul,Nav_Aug,Nav_Sep,Nav_Oct,Nav_Nov,Nav_Dec,Nav_Jan]
             planned_shp={key:abs(planned_shp[i]) for i,key in enumerate(retail_months_upper)}
-            print('planned_shp',planned_shp)
+
+            logging.info(f"Planned shipments : {planned_shp}")
+
+            if np.isnan(in_transit):
+                in_transit = 0
             planned_shp[current_month_upper] += in_transit
-            print('planned_shpadd_in_trasit',planned_shp)
+            logging.info(f"Planned shipments after adding in transit : {planned_shp}")
+
             v1=rolling_method
             k1=current_month_number
             i4=row_4
@@ -1282,7 +1377,8 @@ def process_category(args):
             row_43=LY_OH_Units
 
             row_17=TY_Unit_Sales
-                    # Create a dictionary for Birthstones and corresponding months based on the Birthstone sheet
+            
+            # Create a dictionary for Birthstones and corresponding months based on the Birthstone sheet
             # Initialize output dictionary for Planned EOH (Cal)
 
             # Loop through months
@@ -1294,7 +1390,7 @@ def process_category(args):
                 # Rearrange month_order to start with the current_month
                 start_idx = month_order.index(current_month)
                 reordered_months = month_order[start_idx:] + month_order[:start_idx]
-                print("reordered_months",reordered_months)
+                logging.info(f"reordered_months: {reordered_months}")
                 # Initialize the output dictionary for row_12
                 plan_oh = {}
             
@@ -1314,66 +1410,67 @@ def process_category(args):
                     # Get the previous column's value
                     prev_col12 = plan_oh.get(prev_month, 0)
                     prev_col21 = row_21.get(prev_month, 0)
-                    # print("v1",v1)
-                    # print("k1",k1)
-                    # print("col4",col4)
+                    # logging.info("v1",v1)
+                    # logging.info("k1",k1)
+                    # logging.info("col4",col4)
                     # Apply the logic for calculation
                     if v1 == "Current MTH" and k1 == col4 and col4 == 1:
                         val = row_43['JAN'] + col11 + col37 - col10
-                        # print("condition1")
+                        # logging.info("condition1")
                     elif v1 == "Current MTH" and k1 == col4:
-                        # print("col21",col21)
-                        # print("col11",col11)
-                        # print("col10",col10)
-                        # print("col17",col17)
+                        # logging.info("col21",col21)
+                        # logging.info("col11",col11)
+                        # logging.info("col10",col10)
+                        # logging.info("col17",col17)
                         val = col21 + col11 - (col10 - col17)
-                        # print("condition2")
+                        # logging.info("condition2")
                     elif v1 == "Current MTH" and col4 == 1 and k1 > 1:
-                        # print("condition3")
+                        # logging.info("condition3")
                         val = plan_oh['JAN'] + col11 - col10
                     elif v1 == "YTD" and col4 < k1:
-                        # print("condition3")
+                        # logging.info("condition3")
                         val = col21
                     elif v1 == "Spring" and col4 < 7:
-                        # print("condition4")
+                        # logging.info("condition4")
                         val = col21
                     elif v1 == "Fall" and col4 > 6 and col4 < k1:
-                        # print("condition5")
+                        # logging.info("condition5")
                         val = col21
                     elif v1 == "Fall" and col4 == 1 and k1 > 1:
-                        # print("condition6")
+                        # logging.info("condition6")
                         val = plan_oh['JAN'] + col11 - col10
                     elif v1 == "Fall" and col4 > 6 and col4 == k1:
-                        # print("condition7")
+                        # logging.info("condition7")
                         val = prev_col21 + col37 + col11 - col10
                     elif v1 == "LY Fall" and col4 > 6:
-                        # print("condition8")
+                        # logging.info("condition8")
                         val = col43
                     elif col4 == 1 and v1 == "LY FALL":
-                        # print("condition9")
+                        # logging.info("condition9")
                         val = row_43['JAN'] + col11 + col11 - col10
                     elif col4 == k1 and col4 > 1:
-                        # print("condition10")
-                        # print("prev_col21",prev_col21)
-                        # print("col37",col37)
-                        # print("col11",col11)
-                        # print("col10",col10)
+                        # logging.info("condition10")
+                        # logging.info("prev_col21",prev_col21)
+                        # logging.info("col37",col37)
+                        # logging.info("col11",col11)
+                        # logging.info("col10",col10)
                         val = prev_col21 + col37 + col11 - col10
                     else:
-                        # print("condition11")
-                        # print("prev_col12",prev_col12)
-                        # print("col11",col11)
-                        # print("col10",col10)
+                        # logging.info("condition11")
+                        # logging.info("prev_col12",prev_col12)
+                        # logging.info("col11",col11)
+                        # logging.info("col10",col10)
                         val = prev_col12 + col11 - col10
             
                     # Store the calculated value in row_12 for the current month
                     plan_oh[month] = val
             
                 return plan_oh  
+            
             plan_oh = calculate_row_12(v1, k1, i4, row_10, row_11, row_21, row_37, row_43, row_17, current_month_upper)
-            print('plan_eoh',plan_oh)
-            required_quantity_month_dict = {}
+            logging.info(f"Planned EOH : {plan_oh}")
 
+            required_quantity_month_dict = {}
 
             # Check if the filtered DataFrame is not empty
             bsp_row = master_sheet[master_sheet['PID'] == pid_value]
@@ -1382,14 +1479,16 @@ def process_category(args):
                 bsp_or_not = str(bsp_or_not).strip().upper() if bsp_or_not else None
                 # Step 2: Determine BSP_status
                 bsp_status = 'BSP' if bsp_or_not == 'BSP' else 'non_bsp'
-                print('bsp_status',bsp_status)
+                logging.info(f'Bsp_status : {bsp_status}')
                 # Step 3: Find birthstone_month if BSP
                 birthstone_month = None
                 if bsp_status == 'BSP':
+                    all_birthstone_products.append(pid_value)
+
                     category_bsp=bsp_row['category'].iloc[0]
                     birthstone = bsp_row['Birthstone'].iloc[0] if bsp_or_not == 'BSP' else None
-                    print('category_bsp',category_bsp)
-                    print('birthstone',birthstone)
+                    logging.info(f'category_bsp : {category_bsp}')
+                    logging.info(f'birthstone : {birthstone}')
                     birthstone = str(birthstone).strip() 
                     birthstone_sheet = birthstone_sheet.dropna(subset=['Birthstone'])
                     birthstone_sheet['Birthstone'] = birthstone_sheet['Birthstone'].astype(str)
@@ -1397,7 +1496,7 @@ def process_category(args):
 
                     if not birthstone_row.empty:
                         birthstone_month = birthstone_row['Month Name'].iloc[0]
-                        print('birthstone_month',birthstone_month)
+                        logging.info(f'birthstone_month : {birthstone_month}')
                     if birthstone_month:
                         # Determine the previous month of the birthstone month
                         months_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -1406,40 +1505,37 @@ def process_category(args):
                         # Check if the previous month is in the forecast months
                         for month in forecast_months:
 
-                            print(f"Processing forecast month: {month}")
-                            if month == previous_month or month == 'Nov':  # Apply special condition for November
+                            logging.info(f"Processing forecast month: {month}")
+                            if month == previous_month or month == 'Nov' :  # Apply special condition for November
                                 if category == 'Studs':
                                     required_quantity = 3 * KPI_Door_count  # For Studs, use 3 per door count
                                 elif category == 'Pendants':
                                     required_quantity = 2 * KPI_Door_count  # For Pendants, use 2 per door count
-                                birthstone_list.append(pid_value)
+                                upcoming_birthstone_products.append(pid_value)
                             else:
                                 required_quantity = KPI_Door_count  # If not the previous month or November, use door count only
 
                             # Store the result in the dictionary
                             required_quantity_month_dict[month] = required_quantity
-                            print(f"if  bsp Updated dictionary: {required_quantity_month_dict}")
+                            logging.info(f"if bsp ,Updated dictionary: {required_quantity_month_dict}")
                     # Fallback: Populate the dictionary with `forecast_months` and `door_count`
             if not required_quantity_month_dict:
-                print(f"PID not found or no BSP logic executed. Populating default values...")
+                logging.info(f"PID not found or no BSP logic executed. No adding extra required quantity")
                 for month in forecast_months:
                     required_quantity_month_dict[month] = KPI_Door_count
-            print(f"Updatedf required_quantity_month_dict: {required_quantity_month_dict}")
-
+            
             
             required_quantity_month_dict = {key.upper(): value for key, value in required_quantity_month_dict.items()}
-
-
-            #####################print("Madhavee")
+            logging.info(f"Updated required_quantity_month_dict: {required_quantity_month_dict}")
 
             ly_com_eom_oh=[LY_MCOM_OH_Units[month] for month in ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL','AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN']]
-            print('lastyear avg COM EOM OH for forecast month ',ly_com_eom_oh)
+            logging.info(f'Last year avg COM EOM OH for forecast month : {ly_com_eom_oh}')
             average_com_eom_oh = round(((sum(ly_com_eom_oh)/len(ly_com_eom_oh))),0)
-            print("Extra value to add average_eom_oh : ",average_com_eom_oh)
+            logging.info(f"Extra value to add for average_eom_oh : {average_com_eom_oh}")
             if not average_com_eom_oh :
+                logging.info(f"There is no average COM EOM OH so taking 2 as default value ")
                 average_com_eom_oh = 2
 
-            print(forecast_months)
             months_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
             # Convert the months in `forecast_months` to uppercase to match keys in `planned_fc`
@@ -1452,60 +1548,59 @@ def process_category(args):
                 next_month_fldc=next_month_fldc.upper()
                 # Calculate FLDC for the current month
                 Calculate_FLDC = round((planned_fc[next_month_fldc]) / 2)
-                print(f"Calculate_FLDC for {month}: {Calculate_FLDC}")
+                logging.info(f"Adding FLDC for {month}: {Calculate_FLDC}")
                 month=month.upper()
                 # Update the required_quantity_month_dict
                 required_quantity_month_dict[month] = (
                     required_quantity_month_dict.get(month, 0) + Calculate_FLDC + average_com_eom_oh
                 )          
-            print("Updated final required_quantity_month_dict",required_quantity_month_dict)
+            logging.info(f"Updated final required_quantity_month_dict : {required_quantity_month_dict}")
 
-            #####################print("Madhavee")
 
-            total_gross_projection_added = 0
+
             for i, month in enumerate(forecast_months_upper):
                 # Step 1: Check if planned_oh for the month is less than the required quantity for that month
                 required_quantity = required_quantity_month_dict.get(month, 0)  # Get the required quantity for the month
 
-                print(month,required_quantity)
-                print("plan_oh[month]",plan_oh[month])
-                print("required_quantity",required_quantity)
+                logging.info(f"plan_oh for {month} : {plan_oh[month]}")
+                logging.info(f"required_quantity for {month} : {required_quantity}")
                 if plan_oh[month] < required_quantity:
                     # Calculate the difference between required quantity and planned OH
                     difference = required_quantity - plan_oh[month]     
                     # Update the gross_projection for that month with the calculated difference
                     planned_shp[month] += difference
                     plan_oh[month] += difference
-                    pids_below_door_count.append(pid_value)
-                    total_gross_projection_added += difference
-                    print(f"Updated gross projection for {month}: {planned_shp[month]}")
+                    pids_below_door_count_alert.append(pid_value)
+                    logging.info(f"Updated gross projection for {month}: {planned_shp[month]}")
                 else:
-                    print(f"No update needed for {month} as planned_oh is greater than required quantity.")
+                    logging.info(f"No update needed for {month} as planned_oh is greater than required quantity.")
         
             plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shp, row_21, row_37, row_43, row_17, current_month_upper)
-            print('plan_eoh',plan_oh)
-            print("week_of_forecast_month" ,week_of_forecast_month)
+            logging.info(f'Updated plan_eoh : {plan_oh}')
+            logging.info(f'week_of_forecast_month : {week_of_forecast_month}')
 
             if check == True:                    
-                print("forecast_month list: ",forecast_months)
+                logging.info(f"forecast_month list: {forecast_months}")
                 last_forecast_month = forecast_months[-1] 
                 # Find the index of the last month
                 last_index = months_list.index(last_forecast_month)                
                 # Get the next month (wrap around using modulo)
                 next_forecast_month = months_list[(last_index + 1) % len(months_list)]
-                print("last forecast month : ", last_forecast_month)
+                logging.info(f"last forecast month : {last_forecast_month}")
                 last_forecast_month = last_forecast_month.upper()
                 next_forecast_month = next_forecast_month.upper()
+                logging.info(f"Next forecast month : {next_forecast_month}")
                 plan_oh[next_forecast_month] = (planned_shp[next_forecast_month] + plan_oh[last_forecast_month]) - planned_fc[next_forecast_month]
                 required_quantity_for_next_month = KPI_Door_count + average_com_eom_oh
+                logging.info(f"Required_quantity_for_next_month : {required_quantity_for_next_month}")
                 if plan_oh[next_forecast_month] < required_quantity_for_next_month:
                     difference = required_quantity_for_next_month - plan_oh[next_forecast_month] 
-                    planned_shp[last_forecast_month] += difference
-                    total_gross_projection_added += difference
-                    pids_below_door_count.append(pid_value)
+                    planned_shp[next_forecast_month] += difference
+                    logging.info(f"Updated gross projection for {next_forecast_month}: {planned_shp[next_forecast_month] }")
+                    pids_below_door_count_alert.append(pid_value)
 
             plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shp, row_21, row_37, row_43, row_17, current_month_upper)
-            print('plan_eoh',plan_oh)
+            logging.info(f'Updated plan_eoh : {plan_oh}')
 
             def calculate_week_and_month(start_month_abbr, start_week, year, weeks_to_add):
                 # Map abbreviated month names to their respective numbers
@@ -1514,10 +1609,6 @@ def process_category(args):
                     "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
                     "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
                 }
-                print("start_month_abbr",start_month_abbr)
-                print("start_week",start_week)
-                print("year",year)
-                print("weeks_to_add",weeks_to_add)
                 # Convert the abbreviated month to its numeric equivalent
                 if start_month_abbr not in month_map:
                     return None,None
@@ -1552,9 +1643,9 @@ def process_category(args):
             weeks_to_add = 4          # Add 4 weeks
             
             forecast_month_abbr = convert_month_to_abbr(forecast_month)
-            # Calculate and print the result
+            # Calculate and logging.info the result
             target_month_abbr, target_week = calculate_week_and_month(forecast_month_abbr, week_of_forecast_month, year, weeks_to_add)
-            print("next_month_holiday_check_week",target_month_abbr,target_week)
+            #logging.info("next_month_holiday_check_week",target_month_abbr,target_week)
 
             def check_holiday(target_month_abbr, target_week):
                 holidays = [
@@ -1576,45 +1667,41 @@ def process_category(args):
                 
 
             holiday_name,check_is_holiday = check_holiday(target_month_abbr, target_week)
-            print(f"The holiday in {target_month_abbr} week {target_week} is: {holiday_name}")
+            logging.info(f"The holiday in {target_month_abbr} week {target_week} is: {holiday_name}")
             first_forecast_month = forecast_months_upper[0]
             if check_is_holiday:                    
                 if category == "Men's" and holiday_name in ["father_day", "men_day"]:
                     planned_shp[first_forecast_month] += (required_quantity_month_dict[first_forecast_month] * 1.15)
-                    total_gross_projection_added += (required_quantity_month_dict[first_forecast_month] * 1.15)
                 elif category != "Men's" and holiday_name not in ["father_day", "men_day"]:
                     planned_shp[first_forecast_month] += (required_quantity_month_dict[first_forecast_month] * 1.15)
-                    total_gross_projection_added += (required_quantity_month_dict[first_forecast_month] * 1.15)
+            
 
-            if total_gross_projection_added < Min_order:
-                planned_shp[first_forecast_month] = Min_order
 
             plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shp, row_21, row_37, row_43, row_17, current_month_upper)
-            print('plan_eoh',plan_oh)
-
-            print("Min_order", Min_order)
-            print("total_gross_projection",total_gross_projection_added)
-            # Print final values for verification
-            print('planned_fc',planned_fc)
-            print("Final planned_oh:", plan_oh)
-            print("Final gross_projection:", planned_shp)
 
 
-            def calculate_store_sale_thru(TY_Unit_Sales, TY_MCOM_Unit_Sales, TY_OH_Units, TY_OH_MCOM_Units):
+            logging.info(F"Min_order : {Min_order}")
+            # logging.info final values for verification
+            logging.info(f'Final planned_fc : {planned_fc}')
+            logging.info(f'Final Planned shipments : {planned_shp}')
+            logging.info(f'Final Planned EOH : {plan_oh}')
+
+
+            def calculate_store_sale_thru(LY_Unit_Sales, LY_MCOM_Unit_Sales, LY_OH_Units, LY_MCOM_OH_Units):
                 months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
                 store_sell_thru = {}
                 for month in months:
-                    numerator = TY_Unit_Sales[month] - TY_MCOM_Unit_Sales[month]
-                    denominator = numerator + (TY_OH_Units[month] - TY_OH_MCOM_Units[month])
+                    numerator = LY_Unit_Sales[month] - LY_MCOM_Unit_Sales[month]
+                    denominator = numerator + (LY_OH_Units[month] - LY_MCOM_OH_Units[month])
                     store_sell_thru[month] =numerator / denominator if denominator != 0 else 0
                 return store_sell_thru
 
-            store_sell_thru = calculate_store_sale_thru(TY_Unit_Sales, TY_MCOM_Unit_Sales, TY_OH_Units, TY_OH_MCOM_Units)
+            store_sell_thru = calculate_store_sale_thru(LY_Unit_Sales, LY_MCOM_Unit_Sales, LY_OH_Units, LY_MCOM_OH_Units)
             # Compute the average
-            average_store_sale_thru = sum(store_sell_thru.values()) / len(store_sell_thru)
+            average_store_sale_thru = round((sum(store_sell_thru.values()) / len(store_sell_thru)),2)
 
-            print("Store Sale Thru:", store_sell_thru)
-            print("Average Store Sale Thru:", average_store_sale_thru)
+            logging.info(f"Store Sale Thru : {store_sell_thru}")
+            logging.info(f"Average Store Sale Thru : {average_store_sale_thru}")
 
             threshold = 0.95  # 5% difference
             # Function to calculate the average of a list and check if it's maintained
@@ -1622,13 +1709,10 @@ def process_category(args):
                 average_eom_oh = sum(eom_oh_list) / len(eom_oh_list) if eom_oh_list else 0
                 # Check if the average is within the 5% down range or more than the door count
                 return (average_eom_oh >= threshold * KPI_Door_count) or (average_eom_oh > KPI_Door_count) 
-    
+
             # Check if this year's and last year's Store EOM OH are maintained
             last_year_maintained = is_maintained(last_year_std_store_eom_oh)
             this_year_maintained = is_maintained(this_year_std_store_eom_oh)
-    
-            print("last year_maintained ", last_year_maintained)
-            print("this year maintained ", this_year_maintained)
 
 
 
@@ -1638,8 +1722,7 @@ def process_category(args):
             omni_receipts=TY_Receipts
             spring_months_upper = ['FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL']
             fall_months_upper = [ 'AUG', 'SEP', 'OCT', 'NOV', 'DEC','JAN']
-            print(macys_proj_receipt)
-            print(spring_months)
+            logging.info(f"Macys Proj Receipts : {macys_proj_receipt}")
             # 3) Write a helper function to sum a dictionary's values by season
             def season_sum(data_dict, season_months):
                 return sum(data_dict.get(month, 0) for month in season_months)
@@ -1654,109 +1737,267 @@ def process_category(args):
             macys_fall   = season_sum(macys_proj_receipt, fall_months_upper)
 
             fcm = forecast_months[0]
+        fcm = fcm.upper()
 
-            # Now check the three conditions:
-            if Own_Retail >= 1000:
-                percent = 0.65
-            else:
-                percent = 0.75
-            if average_store_sale_thru > 0.10 :
-                if fcm == "Apr":
-                    macys_spring_75 = round(macys_spring * percent)
-                    print("macys_spring_75",macys_spring_75)
-                    feb_mar_apr_gross_projection = planned_shipments["FEB"] + planned_shipments["MAR"] +  planned_shipments["APR"]
-                    print("feb_mar_apr_gross_projection",feb_mar_apr_gross_projection)
-                    if feb_mar_apr_gross_projection < macys_spring_75:
-                        print(macys_spring_75 - feb_mar_apr_gross_projection)
-                        print(planned_shipments['APR'])
-                        planned_shipments['APR'] += macys_spring_75 - feb_mar_apr_gross_projection
-                        pids_below_door_count.append(pid_value)
-                if fcm == "Jul":
-                    spring_gross_projection = planned_shipments["FEB"] + planned_shipments["MAR"] +  planned_shipments["APR"] +planned_shipments["MAY"] + planned_shipments["JUN"] +  planned_shipments["JUL"]
-                    if spring_gross_projection < macys_spring:
-                        planned_shipments['JUL'] += macys_spring - spring_gross_projection
-                        pids_below_door_count.append(pid_value)
-                if fcm == "Oct":
-                    macys_fall_75 =round( macys_fall * percent)
-                    aug_sep_oct_gross_projection = planned_shipments["AUG"] + planned_shipments["SEP"] +  planned_shipments["OCT"]
-                    if aug_sep_oct_gross_projection < macys_fall_75:
-                        planned_shipments['OCT'] += macys_fall_75 - aug_sep_oct_gross_projection
-                        pids_below_door_count.append(pid_value)
-                if fcm == "Jan":
-                    fall_gross_projection = planned_shipments["AUG"] + planned_shipments["SEP"] +  planned_shipments["OCT"] +planned_shipments["NOV"] + planned_shipments["DEC"] +  planned_shipments["JAN"]
-                    if fall_gross_projection < macys_fall:
-                        planned_shipments['JAN'] += macys_fall - fall_gross_projection
-                        pids_below_door_count.append(pid_value)
-            def round_to_nearest_five(value):
-                return round(value / 5) * 5
-            # planned_shipments={key: round(value) for key, value in planned_shipments.items()}
+        def sum_planned_shipments(months_upper, fcm, planned_shipments):
+            if fcm not in months_upper:
+                raise ValueError("FCM must be in the list of spring months")
+            
+            start_index = 0  # Always start from the first month in spring_months_upper
+            end_index = months_upper.index(fcm) + 1  # Include the FCM month
+            
+            selected_months = months_upper[start_index:end_index]
+            
+            return sum(planned_shipments.get(month, 0) for month in selected_months)
 
-            planned_shipments[fcm.upper()] = round_to_nearest_five(planned_shipments[fcm.upper()])
-            plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shipments, row_21, row_37, row_43, row_17, current_month_upper)
-            print('plan_eoh',plan_oh)
-            print("planned_shp",planned_shipments)
-            planned_spring = season_sum(planned_shipments, spring_months_upper)
-            planned_fall = season_sum(planned_shipments, fall_months_upper)
 
-            # 6) Compare Macys Projection vs. the Combined Total
-            #    If Macys Projection is less than the combined total, print a warning
-            if macys_spring < planned_spring or macys_fall < planned_fall:
-                notify_macys.append(pid_value)
- 
+        def distribute_units(total_demand, supplied_until, percentage, current_month, months):
+            """
+            Distributes the remaining units across the upcoming months to meet the target percentage.
+        
+            :param total_demand: Total demand from the customer
+            :param supplied_until: Units already supplied until the current month
+            :param percentage: Percentage of total demand to be met by the last month
+            :param current_month: The current month from which the remaining units need to be allocated
+            :param months: List of months in order
+            :return: Dictionary with units allocated per month
+            """
+            target_supply = int(total_demand * (percentage / 100))  # Target supply based on percentage
+            remaining_units = target_supply - supplied_until  # Units that need to be distributed
+        
+            # Identify the remaining months from the current month onward
+            current_index = months.index(current_month)
+            remaining_months = months[current_index:]  # Include the current month and onward
+        
+            # Initialize distribution
+            distribution = {month: 0 for month in months}
+        
+            # Assign already supplied units to past months
+            for month in months[:current_index]:
+                distribution[month] = 0  # Past months remain unchanged
+        
+            # Distribute remaining units across upcoming months (starting from current month)
+            if remaining_units > 0:
+                units_per_month = remaining_units // len(remaining_months)
+                extra_units = remaining_units % len(remaining_months)  # Handle remainder
+        
+                for i, month in enumerate(remaining_months):
+                    distribution[month] = units_per_month + (1 if i < extra_units else 0)
+        
+            return distribution
 
-        if current_month  in ['Feb','Mar','Apr'] :
 
-            this_year_value=year_of_previous_month
-            last_year_value=last_year_of_previous_month
-            this_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == this_year_value)]
-            last_year_data = All_DATA.loc[(All_DATA['PID'] == pid_value) & (All_DATA['Year'] == last_year_value)]
-            this_year_MCOM=MCOM_Data.loc[(MCOM_Data['PID'] == pid_value) & (MCOM_Data['Year'] == this_year_value)]
-            last_year_MCOM=MCOM_Data.loc[(MCOM_Data['PID'] == pid_value) & (MCOM_Data['Year'] == last_year_value)]
-            # Define months in order
-            months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-            # Initialize dictionaries to store results
-            TY_Unit_Sales = {month: 0 for month in months}
-            LY_Unit_Sales = {month: 0 for month in months}
-            LY_OH_Units = {month: 0 for month in months}
-            TY_OH_Units = {month: 0 for month in months}
-            TY_Receipts = {month: 0 for month in months}
-            TY_MCOM_Unit_Sales = {month: 0 for month in months}
-            TY_OH_MCOM_Units={month: 0 for month in months}
-            PTD_TY_Sales={month: 0 for month in months}
-            MCOM_PTD_TY_Sales={month: 0 for month in months}
-            LY_MCOM_Unit_Sales={month: 0 for month in months}
-            LY_MCOM_OH_Units = {month: 0 for month in months}
-            OO_Total_Units={month: 0 for month in months}
-            OO_MCOM_Total_Units={month: 0 for month in months}
-            LY_Receipts={month: 0 for month in months}
-            LY_PTD_Sales={month: 0 for month in months}
-            MCOM_PTD_LY_Sales={month: 0 for month in months}
-            # Sum data for each month
-            for month in months:
-                TY_Unit_Sales[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
-                LY_Unit_Sales[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
-                LY_OH_Units[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'OH TY Units'].sum()
-                TY_OH_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OH TY Units'].sum()
-                TY_Receipts[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
-                TY_MCOM_Unit_Sales[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
-                LY_MCOM_Unit_Sales[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'PTD TY Unit Sales'].sum()
-                TY_OH_MCOM_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OH TY Units'].sum()
-                PTD_TY_Sales[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
-                LY_PTD_Sales[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
-                MCOM_PTD_TY_Sales[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
-                MCOM_PTD_LY_Sales[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'PTD TY $ Sales'].sum()
-                LY_MCOM_OH_Units[month] = last_year_MCOM.loc[last_year_MCOM['Month'].str.upper() == month, 'OH TY Units'].sum()
-                OO_Total_Units[month] = this_year_data.loc[this_year_data['Month'].str.upper() == month, 'OO Total Units'].sum()
-                OO_MCOM_Total_Units[month] = this_year_MCOM.loc[this_year_MCOM['Month'].str.upper() == month, 'OO Total Units'].sum()
-                LY_Receipts[month] = last_year_data.loc[last_year_data['Month'].str.upper() == month, 'PTD TY RCVD Unit'].sum()
-            # 7) Optional: Print out all the final values to see at a glance
-            print("\n--- Season Summaries ---")
-            print(f"Planned Shipments Spring: {planned_spring}, Fall: {planned_fall}")
-            print(f"Macys Receipts Spring:   {macys_spring},   Fall: {macys_fall}")
-            print("END ONE PRODUCT..........")
+
+        # Now check the three conditions:
+        if average_store_sale_thru > 0.14 :
+            percentage = 1.0
+            logging.info(f"Average store sale thorugh > 0.14 So Percentage = 100 %")
+        elif Own_Retail <= 1000 and average_store_sale_thru >= 0.10 :
+            percentage = 1.0
+            logging.info(f"Average store sale thorugh >= 0.10 and Price <= 1000 So percentage = 100 %")
+        elif Own_Retail > 1000 and average_store_sale_thru >= 0.10:
+            percentage = 0.75
+            logging.info(f"Average store sale thorugh >= 0.10 and Price > 1000 So percentage = 75 %")
+        elif Own_Retail <= 1000 and average_store_sale_thru >= 0.04 :
+            percentage = 0.75
+            logging.info(f"Average store sale thorugh > 0.04 and Price <= 1000 So percentage = 75 %")
+        elif Own_Retail > 1000 and average_store_sale_thru >= 0.04:
+            percentage = 0.65
+            logging.info(f"Average store sale thorugh >= 0.04 and Price > 1000 So percentage = 65 %")
+        else:
+            percentage = 0.40
+            logging.info(f"Other condition So percentage = 40 %")
+
+        
+        if season == "Spring":
+            total_gross_projection_season_wise = macys_spring
+            logging.info(f"Total_macys_proj_receipt_for_current_{season} : {total_gross_projection_season_wise}")
+            month_lists = spring_months_upper
+            planned_shp_upto_current_month = sum_planned_shipments(spring_months_upper, fcm, planned_shipments)
+            logging.info(f"Sum of planned shipments up to {fcm} :  {planned_shp_upto_current_month}")
+            logging.info(f"Remaining macys proj receipts")
+            
+        else:
+            total_gross_projection_season_wise = macys_fall
+            logging.info(f"Total_macys_proj_receipt_for_{season} : {total_gross_projection_season_wise}")
+            month_lists = fall_months_upper
+            planned_shp_upto_current_month = sum_planned_shipments(fall_months_upper, fcm, planned_shipments)
+            logging.info(f"Sum of planned shipments up to {fcm} : {planned_shp_upto_current_month}")
+
+        
+
+        result = distribute_units(total_gross_projection_season_wise, planned_shp_upto_current_month, percentage*100, fcm, month_lists)
+        logging.info(f"Spltiing macys proj receipt result : {result}")
+
+        # planned_shipments={key: round(value) for key, value in planned_shipments.items()}
+       
+        if check==True:
+            keys = list(planned_shipments.keys())  # Get all keys in a list
+            if fcm in keys:  
+                index = keys.index(fcm)  # Find the index of "fcm"
+                if index + 1 < len(keys):  # Ensure there's a next key
+                    next_key = keys[index + 1]  
+                    if int(result[next_key]) > 0:
+                        added_macys_proj_receipts_alert.append(pid_value)
+                    logging.info(f"Added quantity for {next_key} according to macys proj receipts (Adding in Next month as forecast week is greater than 2 ): {planned_shipments[next_key]} + {result[next_key]}")
+                    planned_shipments[next_key] += result[next_key]  # Update only the next key
+
+        else:
+            logging.info(f"Added quantity for {fcm} according to macys proj receipts : {planned_shipments[fcm]} +{result[fcm]}")
+            planned_shipments[fcm] += result[fcm]
+            if int(result[fcm]) > 0:
+                added_macys_proj_receipts_alert.append(pid_value)
+
+
+        plan_oh = calculate_row_12(v1, k1, i4, row_10, planned_shipments, row_21, row_37, row_43, row_17, current_month_upper)
+        logging.info(f"Latest plan_eoh : {plan_oh}")
+        logging.info(f"Latest planned_shp : {planned_shipments}")
+
+
+        planned_spring = season_sum(planned_shipments, spring_months_upper)
+        planned_fall = season_sum(planned_shipments, fall_months_upper)
+
+        def round_to_nearest_five(value):
+            return math.ceil(value / 5) * 5
+
+        # 6) Compare Macys Projection vs. the Combined Total
+        #    If Macys Projection is less than the combined total, logging.info a warning
+        if macys_spring < planned_spring or macys_fall < planned_fall:
+            notify_macys_alert.append(pid_value)
+
+        total_planned_shipments = planned_spring + planned_fall
+        total_gross_projection = sum([Nav_Feb,Nav_Mar,Nav_Apr,Nav_May,Nav_Jun,Nav_Jul,Nav_Aug,Nav_Sep,Nav_Oct,Nav_Nov,Nav_Dec,Nav_Jan])
+        
+        total_added_quantity = total_planned_shipments - total_gross_projection - in_transit
+
+        logging.info(f"Total_added_quantity : {total_added_quantity}")
+
+        if total_added_quantity < Min_order:
+            logging.info(f"Min order : {Min_order}")
+            logging.info(f"Total_added_quantity is less than min order")
+            min_order_alert.append(pid_value)
+
+            # Check if the product already exists
+        ProductDetail.objects.update_or_create(
+            product_id=pid_value,
+            defaults={
+                "product_description": safe_str(PID_Desc),
+
+                # Main identifiers
+                "blu": safe_str(RLJ),
+                "mkst": safe_str(MKST),
+                "currect_fc_index": safe_str(Current_FC_Index),
+
+                # Classification fields
+                "safe_non_safe": safe_str(Safe_Non_Safe),
+                "item_code": safe_str(Item_Code),
+
+                # Store information
+                "current_door_count": safe_int(Door_Count),
+                "last_store_count": safe_int(Last_Str_Cnt),
+                "door_count_updated": parse_date(Door_count_Updated),
+                "store_model": safe_int(Store_Model),
+                "com_model": safe_int(Com_Model),
+
+                # Inventory and forecast fields
+                "holiday_build_fc": safe_int(Holiday_Bld_FC),
+                "macys_onhand": safe_int(MCYOH),
+                "oo": safe_int(OO),
+                "in_transit": safe_int(nav_OO),
+                "month_to_date_shipment": safe_int(MTD_SHIPMENTS),
+                "lastweek_shipment": safe_int(LW_Shipments),
+                "planned_weeks_of_stock": safe_int(Wks_of_Stock_OH),
+                "weeks_of_projection": safe_int(Wks_of_on_Proj),
+                "last_4weeks_shipment": safe_int(Last_3Wks_Ships),
+
+                # Vendor information
+                "vendor_name": safe_str(Vendor_Name),
+                "min_order": safe_int(Min_order),
+
+                # Projection fields
+                "rl_total": safe_int(Proj),
+                "net_projection": safe_int(Net_Proj),
+                "unalloc_order": safe_int(Unalloc_Orders),
+
+                # Distribution center fields
+                "ma_bin": safe_int(RLJ_OH),
+                "fldc": safe_int(FLDC),
+                "wip_quantity": safe_int(WIP),
+
+                # Status fields
+                "md_status": safe_str(MD_Status_MZ1),
+                "replanishment_flag": safe_str(Repl_Flag),
+                "mcom_replanishment": safe_str(MCOM_RPL),
+                "pool_stock": safe_int(Pool_stock),
+
+                # Date fields
+                "first_reciept_date": parse_date(st_Rec_Date),
+                "last_reciept_date": parse_date(Last_Rec_Date),
+                "item_age": safe_int(Item_Age),
+                "first_live_date": parse_date(st_Live),
+
+                # Cost and retail fields
+                "this_year_last_cost": safe_float(TY_Last_Cost),
+                "macys_owned_retail": safe_float(Own_Retail),
+                "awr_first_ticket_retail": safe_float(AWR_1st_Tkt_Ret),
+
+                # Policy and configuration fields
+                "metal_lock": safe_float(Metal_Lock),
+                "mfg_policy": safe_str(MFG_Policy),
+
+                # KPI fields
+                "kpi_data_updated": safe_str(KPI_Data_Updated),
+                "kpi_door_count": safe_int(KPI_Door_count),
+
+                # Location fields
+                "out_of_stock_location": safe_int(OOS_Locs),
+                "suspended_location_count": safe_int(Suspended_Loc_Count),
+                "live_site": safe_str(Live_Site),
+
+                # Product categorization fields
+                "masterstyle_description": safe_str(Masterstyle_Desc),
+                "masterstyle_id": safe_str(MstrSt_ID),
+
+                "department_id": safe_int(Dpt_ID),
+                "department_description": safe_str(Dpt_Desc),
+
+                "subclass_id": safe_int(SC_ID),
+                "subclass_decription": safe_str(SC_Desc),
+                "webid_description": safe_str(Prod_Desc),
+
+                # Marketing fields
+                "v2c": safe_str(V2C),
+                "marketing_id": safe_str(Mktg_ID),
+                "std_store_return": safe_float(STD_Store_Rtn),
+
+                # Planning fields
+                "last_project_review_date": parse_date(Last_Proj_Review_Date),
+                "macy_spring_projection_note": safe_str(Macys_Spring_Proj_Notes),
+                "planner_response": safe_str(Planner_Response)
+            }
+        )
+
+       
+
+        productmain = ProductDetail.objects.get(product_id=pid_value)
+        # Save data to DB
+
+        MonthlyForecast.objects.update_or_create(
+            product=productmain,
+            year=current_year,
+            defaults={}
+            )
+     
+        current_year = datetime.now().year
+        save_macys_projection_receipts(productmain, matching_row, current_year)
+        save_monthly_forecasts(productmain, current_year, months, TY_Unit_Sales, LY_Unit_Sales, LY_OH_Units, TY_OH_Units, TY_Receipts, LY_Receipts, TY_MCOM_Unit_Sales, LY_MCOM_Unit_Sales, TY_OH_MCOM_Units, LY_MCOM_OH_Units, PTD_TY_Sales, LY_PTD_Sales, MCOM_PTD_TY_Sales, MCOM_PTD_LY_Sales, OO_Total_Units, OO_MCOM_Total_Units)
+
+        print(f"Product {pid_value} saved successfully")	
+
+        
 
         dynamic_formulas = {
-            f"G{start_row + 34}": g_value,
+            f"G{start_row + 34}": 1,
             f"F{start_row + 1}": f"=C{start_row + 1}",
             f"C{start_row}": pid_value,
             f"D{start_row}": RLJ,
@@ -1903,7 +2144,7 @@ def process_category(args):
             f"W{start_row + 33}": "FALL",
 
 
-            f"F{start_row + 2}": f"=IFERROR(C{start_row + 2}/E{start_row + 2},0)",
+            # f"F{start_row + 2}": f"=IFERROR(C{start_row + 2}/E{start_row + 2},0)",
             f"F{start_row + 7}": f"=C{start_row + 14}+E{start_row + 8}-E{start_row + 7}",
             f"F{start_row + 10}": f"=MAX(0,C{start_row + 24}-F{start_row + 9})",
             f"D{start_row + 12}": f"=C{start_row + 12}*C{start_row + 19}",
@@ -2254,18 +2495,18 @@ def process_category(args):
             f"R{start_row + 8}":Nav_Nov,
             f"S{start_row + 8}": Nav_Dec,
             f"T{start_row + 8}": Nav_Jan,
-            f"I{start_row + 6}": planned_shp["FEB"],
-            f"J{start_row + 6}": planned_shp["MAR"],
-            f"K{start_row + 6}": planned_shp["APR"],
-            f"L{start_row + 6}": planned_shp["MAY"],
-            f"M{start_row + 6}": planned_shp["JUN"],
-            f"N{start_row + 6}": planned_shp["JUL"],
-            f"O{start_row + 6}": planned_shp["AUG"],
-            f"P{start_row + 6}":planned_shp["SEP"],
-            f"Q{start_row + 6}":planned_shp["OCT"],
-            f"R{start_row + 6}":planned_shp["NOV"],
-            f"S{start_row + 6}": planned_shp["DEC"],
-            f"T{start_row + 6}": planned_shp["JAN"],
+            f"I{start_row + 6}": planned_shipments["FEB"],
+            f"J{start_row + 6}": planned_shipments["MAR"],
+            f"K{start_row + 6}": planned_shipments["APR"],
+            f"L{start_row + 6}": planned_shipments["MAY"],
+            f"M{start_row + 6}": planned_shipments["JUN"],
+            f"N{start_row + 6}": planned_shipments["JUL"],
+            f"O{start_row + 6}": planned_shipments["AUG"],
+            f"P{start_row + 6}":planned_shipments["SEP"],
+            f"Q{start_row + 6}":planned_shipments["OCT"],
+            f"R{start_row + 6}":planned_shipments["NOV"],
+            f"S{start_row + 6}": planned_shipments["DEC"],
+            f"T{start_row + 6}": planned_shipments["JAN"],
             f"U{start_row + 8}": f"=SUM(I{start_row + 8}:T{start_row + 8})",
             f"V{start_row + 8}": f"=IFERROR(SUM(I{start_row + 8}:N{start_row + 8}),0)",
             f"W{start_row + 8}": f"=IFERROR(SUM(O{start_row + 8}:T{start_row + 8}),0)",
@@ -2856,7 +3097,7 @@ def process_category(args):
             f"F{start_row + 11}": f"=IFERROR(IF(U{start_row + 6}>C{start_row + 14},(U{start_row + 6}-C{start_row + 14}+C{start_row + 14}-F{start_row + 10}-C{start_row + 12})/E{start_row + 9},(C{start_row + 14}-F{start_row + 10}-C{start_row + 12})/E{start_row + 9}),0)",
             f"G{start_row + 11}": f"=F{start_row + 11}*E{start_row + 9}",
             f"G{start_row + 19}": f"=((U{start_row + 20}/U{start_row + 12})-C{start_row + 19})/(U{start_row + 20}/U{start_row + 12})",
-            f"E{start_row + 33}": f"=U{start_row + 6}-U{start_row + 8}-E{start_row + 8}",
+            f"E{start_row + 33}": f"=ROUND((U{start_row + 6}-U{start_row + 8}-E{start_row + 8})/5, 0) * 5",
             f"A{start_row + 1}": f"=$C{start_row}&H{start_row + 1}",
             f"A{start_row + 2}": f"=$C{start_row}&H{start_row + 2}",
             f"A{start_row + 3}": f"=$C{start_row}&H{start_row + 3}",
@@ -2997,7 +3238,7 @@ def process_category(args):
             try:
                 ws[cell] = formula  # Set the formula directly in the specified cell
             except Exception as e:
-                print(f"Error setting formula in {cell}: {e}")
+                logging.info(f"Error setting formula in {cell}: {e}")
 
         # Apply ROUND formatting with different decimal places
         apply_round_format(ws, rounded_ranges, decimal_places=0)
@@ -3259,26 +3500,17 @@ def process_category(args):
         for row in ws[f"B{start_row+50}:W{start_row+50}"]:
             for cell in row:
                 cell.border = gridline_top_bottom
-    
     # Define border style for left and right only
 
         
     ws.column_dimensions.group("A", "A", outline_level=1, hidden=True)
 
-    wb.save(output_file_path)  # Save the workbook as an .xlsx file
-    print(f"Workbook '{output_file}' saved successfully.")
-    result = {}
+    wb.save(output_file)  # Save the workbook as an .xlsx file
+    logging.info(f"Workbook '{output_file}' saved successfully.")
+
+    result[output_file] = {"All products":all_products,"Com products":com_products,"Store products":store_products,"Pid_to_review": pids_below_door_count_alert, "Birthstone products": all_birthstone_products,  "Pid_to_notify_to_macys": notify_macys_alert,"Upcoming birthstone products": upcoming_birthstone_products,"Added quatity using macys proj receipts":added_macys_proj_receipts_alert,"Quantity below min order":min_order_alert}
     
-    # result[output_file] = {"Pid_to_review": pids_below_door_count, "Pid_to_birthstone": birthstone_list ,  "Pid_to_notify_to_macy":notify_macys,   "Pid_to_Store_product": store_products}
-    #print("JSON structure to be written:\n", final_data)
-    result = {
-        output_file: {
-            "Pid_to_review": pids_below_door_count,
-            "Pid_to_birthstone": birthstone_list,
-            "Pid_to_notify_to_macy": notify_macys,
-            "Pid_to_Store_product": store_products,
-        }
-    }
+
     return result
 
 

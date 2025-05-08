@@ -495,8 +495,8 @@ function Forecast() {
   };
 
   const months = [
-    "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December", "January",
+     "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December", "January","February"
   ];
 
   const SelectedCategoriesCount = checkedItems.filter(item => item).length;
