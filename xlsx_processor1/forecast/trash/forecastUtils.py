@@ -1978,7 +1978,6 @@ def process_category(args):
         )
 
        
-
         productmain = ProductDetail.objects.get(product_id=pid_value)
         # Save data to DB
 

@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 import time
 import json 
-from .forecastUtils import make_zip_and_delete,process_data,get_previous_retail_week
+# from .forecastUtils import make_zip_and_delete,process_data,get_previous_retail_week
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -13,54 +13,78 @@ from .models import ProductDetail, MonthlyForecast
 from rest_framework import viewsets
 from django.shortcuts import get_object_or_404
 from .serializers import ProductDetailSerializer, MonthlyForecastSerializer
+import zipfile 
+from .service.exportExcel import process_data
 
+def make_zip_and_delete(folder_path):
+    folder_path = os.path.normpath(folder_path)
+    zip_file_path = os.path.normpath(f'{folder_path}.zip')
+    
+    try:
+        # Create a ZIP file
+        with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, folder_path)  # Preserve folder structure
+                    zipf.write(file_path, arcname)
+        
+        print(f"Folder '{folder_path}' has been compressed into '{zip_file_path}'")
 
+        # # Delete the folder after zipping
+        # shutil.rmtree(folder_path)
+        # print(f"Folder '{folder_path}' has been deleted successfully.")
+    
+    except PermissionError:
+        print(f"Permission denied: Cannot access '{folder_path}'. Please check folder permissions.")
+    except FileNotFoundError:
+        print(f"File not found: '{folder_path}' does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+ 
 
 class UploadXlsxAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
+        uploaded_file = request.FILES.get('file')
+        output_folder = request.data.get('output_filename')
+        month_from = request.data.get('month_from')
+        month_to = request.data.get('month_to')
+        percentage = request.data.get('percentage')
+        categories = request.data.get('categories')
+
+        if not uploaded_file or not output_folder:
+            return Response({'error': 'File or output folder not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        input_tuple = []
+        if categories:
+            input_tuple = [(item['name'], item['value']) for item in json.loads(categories)]
+
+        processed_dir = os.path.join(settings.MEDIA_ROOT, 'processed_files')
+        os.makedirs(processed_dir, exist_ok=True)
+        output_folder_path = os.path.join(processed_dir, output_folder)
+        os.makedirs(output_folder_path, exist_ok=True)
+
+        # Save uploaded file into MEDIA_ROOT
+        save_path = os.path.join(output_folder_path, uploaded_file.name)
+        with open(save_path, 'wb+') as dest:
+            for chunk in uploaded_file.chunks():
+                dest.write(chunk)
+        input_path = save_path
+
         try:
-            uploaded_file = request.FILES.get('file')
-            output_folder = request.data.get('output_filename')
-            month_from = request.data.get('month_from')
-            month_to = request.data.get('month_to')
-            percentage = request.data.get('percentage')
-            categories = request.data.get('categories')
-
-            if not uploaded_file or not output_folder:
-                return Response({'error': 'File or output folder not provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-            if categories:
-                categories = json.loads(categories)  # Convert JSON string to list of dictionaries
-                input_tuple = [(item['name'], item['value']) for item in categories]
-            else:
-                input_tuple = []
-
-            # Ensure the directory exists within MEDIA_ROOT
-            processed_dir = os.path.join(settings.MEDIA_ROOT, 'processed_files')
-            os.makedirs(processed_dir, exist_ok=True)
-            output_folder_path = os.path.join(processed_dir, output_folder)
-            os.makedirs(output_folder_path, exist_ok=True)
-
-            input_path = uploaded_file.temporary_file_path()
-            file_path = output_folder_path
-
-            try:
-                start_time = time.time()
-                process_data(input_path, file_path, month_from, month_to, percentage, input_tuple)  # Ensure this function is defined elsewhere
-                end_time = time.time()
-                elapsed_time = end_time - start_time
-                print(f"Function executed in {elapsed_time:.6f} seconds")
-                make_zip_and_delete(file_path)  # Ensure this function is defined elsewhere
-            except Exception as e:
-                return Response({'error': f'An error occurred during processing: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            file_url = f'{settings.MEDIA_URL}processed_files/{output_folder}.zip'
-            return Response({'file_path': file_url}, status=status.HTTP_200_OK)
-
+            start_time = time.time()
+            process_data(input_path, output_folder_path, month_from, month_to, percentage, input_tuple)
+            elapsed_time = time.time() - start_time
+            print(f"Processing took {elapsed_time:.3f}s")
+            make_zip_and_delete(output_folder_path)
         except Exception as e:
-            return Response({'error': f'Server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': f'Processing error: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        zip_rel = f'processed_files/{output_folder}.zip'
+        zip_url = request.build_absolute_uri(settings.MEDIA_URL + zip_rel)
+        return Response({'file_url': zip_url}, status=status.HTTP_200_OK)
 
 
 class DownloadFileAPIView(APIView):
