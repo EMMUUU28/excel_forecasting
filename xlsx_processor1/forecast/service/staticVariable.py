@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from calendar import monthrange
 import pandas 
-from .utils import *
+# from .utils import *
 from .getretailinfo import *
 CURRENT_DATE = datetime(2025,5,8)
 

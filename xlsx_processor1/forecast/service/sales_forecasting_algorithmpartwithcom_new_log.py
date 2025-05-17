@@ -1,15 +1,17 @@
 import copy
+import logging
 from .utils import *
-from .staticVariable import *
-from .getretailinfo import *
-from .createDataframe import *
+
 logging.basicConfig(filename=r'log_file_all1.log', level=logging.INFO,
                     format='%(asctime)s:%(levelname)s:%(message)s',
                     filemode='w')
 
 def algorithm(loader,category,all_birthstone_products,upcoming_birthstone_products,pids_below_door_count_alert,less_than_macys_SOQ_alert,added_macys_proj_receipts_alert,notify_macys_alert,min_order_alert,store,coms,omni):
    
-
+    from forecast.service.getretailinfo import current_month,year_of_previous_month,season,previous_week_number
+    from forecast.service.staticVariable import month_week_dict,CURRENT_DATE
+    from forecast.service.createDataframe import return_QA_df,master_sheet,vendor_sheet, birthstone_sheet
+    
     vendor = get_vendor_by_pid(loader.pid_value, master_sheet)
     country, lead_time = get_vendor_details(vendor, vendor_sheet)
     logging.info(f'pid: {loader.pid_value}')

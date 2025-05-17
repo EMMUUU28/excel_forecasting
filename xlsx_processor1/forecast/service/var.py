@@ -9,7 +9,7 @@ class VariableLoader:
         if matching_row.empty:
             raise ValueError(f"Cross ref '{cross_ref}' not found in 'planning_df'.")
         
-    # Extract required values
+    
         self.pid_value = matching_row['PID'].iloc[0]
         self.RLJ = matching_row['Adjusted RLJ Item'].iloc[0] 
         self.MKST = matching_row['Mkst'].iloc[0] # Get the first matching PID
