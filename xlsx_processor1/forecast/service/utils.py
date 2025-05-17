@@ -1,12 +1,11 @@
 # from .createDataframe 
-
-from .staticVariable import *
+import re
 import math
+import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from calendar import monthrange
-import re
-import pandas as pd
+
+from forecast.service.staticVariable import *
 
 
 def count_ttl_com_sale(LY_Unit_Sales,LY_MCOM_Unit_Sales):

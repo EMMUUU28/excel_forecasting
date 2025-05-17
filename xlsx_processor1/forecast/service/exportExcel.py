@@ -1,22 +1,27 @@
-
-import time
-# from .staticVariable import *
-import openpyxl
-from openpyxl.styles import Alignment
-from openpyxl.workbook.defined_name import DefinedName
-from openpyxl.worksheet.datavalidation import DataValidation
-from openpyxl.styles import PatternFill,GradientFill
-from openpyxl.styles import Border,Side, Font,Alignment
+# exportExcel.py
+# Standard library imports
 import json
-import numpy as np
 import os
-import pandas as pd
-start_time = time.time()
-import logging
-# Set up logging configuration
-from .readInputExcel import readInputExcel
 from multiprocessing import Pool, cpu_count
 
+# Third-party imports
+import numpy as np
+import pandas as pd
+import openpyxl
+from openpyxl.styles import (
+    Alignment,
+    Border,
+    Font,
+    PatternFill,
+    GradientFill,
+    Side
+)
+from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.worksheet.datavalidation import DataValidation
+
+# Local application imports
+from .readInputExcel import readInputExcel
+from forecast.service import config
 
 def process_data(input_path, file_path, month_from, month_to, percentage, input_tuple):
     print("Input path:", input_path)
@@ -52,7 +57,7 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
     # ]
 
     category = input_tuple
-
+    print("Category:", category)
     dynamic_categories = []
     for category_name, code in category:
         try:
@@ -86,25 +91,32 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
     )
 
     args_list = [
-        (category, code, num_products, static_data, file_path)
+        (index_df, config.sheets, config.return_QA_df,category, code, num_products, static_data, file_path)
         for category, code, num_products in dynamic_categories
     ]
 
     final_data = {}
     store, coms, omni = [], [], []
 
-    with Pool(processes=1) as pool:
+    with Pool(processes=cpu_count()) as pool:
         results = pool.map(process_category, args_list)
 
     for result in results:
         if result:
-            output_file, data, s, c, o = result
-            final_data[output_file] = data
+            json_result, s, c, o = result
+            final_data.update(json_result)
             store.extend(s)
             coms.extend(c)
             omni.extend(o)
     
-    print("JSON structure to be written:\n", final_data)
+     # Save JSON in media/output.json
+    json_output_path = os.path.join("media", "output.json")
+    with open(json_output_path, "w") as f:
+        json.dump(final_data, f, indent=2)
+
+    print(f"\nSuccessfully wrote data to {json_output_path}")
+    print("Data written to JSON file successfully.")
+
     df_store = pd.DataFrame(store)
     df_coms = pd.DataFrame(coms)
     df_omni = pd.DataFrame(omni)
@@ -114,16 +126,7 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
         df_store.to_excel(writer, sheet_name="store", index=False)
         df_coms.to_excel(writer, sheet_name="coms", index=False)
         df_omni.to_excel(writer, sheet_name="omni", index=False)
-        # Write the final_data to a JSON file
-        with open("output.json", "w") as f:
-            json.dump(final_data, f, indent=2)
-    
-    print("\nSuccessfully wrote data to output.json")
-    end_time = time.time()
-    runtime = end_time - start_time
-
-    # Display runtime in seconds
-    print(f"Total runtime: {runtime:.2f} seconds")
+    print("Data written to Excel file successfully.")    
 
 
 def process_category(args):
@@ -132,16 +135,16 @@ def process_category(args):
     print("Importing algorithm...")
     from forecast.service.staticVariable import month_data, STD_PERIOD, month_col_map, H_VALUES, ALL_VALUES, MONTHLY_VALUES
     print("Importing static variables...")
-    print(f"[DEBUG] category: {category}, code: {code}, num_products: {num_products}")
-
-    from forecast.service.createDataframe import index_df
     
-    print("Importing index_df...")
+    
+    index_df,sheets,return_QA_df, category, code, num_products, static_data, file_path = args
+    print(f"[DEBUG] category: {category}, code: {code}, num_products: {num_products}")
+    from forecast.service import config
+    config.sheets = sheets
+    config.return_QA_df = return_QA_df
 
     from forecast.service.var import VariableLoader
     print("Importing VariableLoader...")
-    
-    category, code, num_products, static_data, file_path = args
     (
         year_of_previous_month, last_year_of_previous_month, season,
         current_month, current_month_number, previous_week_number,
@@ -151,7 +154,9 @@ def process_category(args):
         dec_weeks, jan_weeks
     ) = static_data
 
-    
+    store = []
+    coms = []
+    omni = []
     print('num_products',num_products)
     # Update the data variable with category-specific values
     data = [
@@ -161,10 +166,10 @@ def process_category(args):
         ["", category.upper(), code, "", "Avg Sales 1st & last Mth", 8, 11, "Month #", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, "", "", ""]
     ]
 
-    output_file = f"{category}{code}.xlsx"
+    output_file_name = f"{category}{code}.xlsx"
     # output_dir = r"D:\Yamini\Excel automation\original_excel_automation\Refactored_Samuel\April_week_4"
     output_dir = file_path
-    output_file = os.path.join(output_dir, output_file)
+    output_file = os.path.join(output_dir, output_file_name)
     # Initialize workbook and create sheets
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -1930,6 +1935,9 @@ def process_category(args):
 
     wb.save(output_file)  # Save the workbook as an .xlsx file
     print(f"Workbook '{output_file}' saved successfully.")
+    json_result = {}
+    json_result[output_file_name] = {"Pid_to_review": pids_below_door_count_alert, "Birthstone products": all_birthstone_products,  "Pid_to_notify_to_macys": notify_macys_alert,"Upcoming birthstone products": upcoming_birthstone_products,"Added quatity using macys proj receipts":added_macys_proj_receipts_alert,"Quantity below min order":min_order_alert}
+
     # At the end of this function, return a tuple of (output_file, final_data, store, coms, omni)
-    return output_file, {"Pid_to_review": [], "Pid_to_birthstone": [], "Pid_to_notify_to_macy": [], "Pid_to_Store_product": []}, store, coms, omni
+    return json_result, store, coms, omni
     

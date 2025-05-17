@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from calendar import monthrange
-import re
+
 CURRENT_DATE=datetime(2025,5,8)
 def get_previous_retail_week(current_date):
     """

@@ -1,6 +1,6 @@
 import copy
 import logging
-from .utils import *
+from forecast.service.utils import *
 
 logging.basicConfig(filename=r'log_file_all1.log', level=logging.INFO,
                     format='%(asctime)s:%(levelname)s:%(message)s',

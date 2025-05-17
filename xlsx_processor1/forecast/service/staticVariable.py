@@ -1,8 +1,6 @@
-from datetime import datetime, timedelta
-from calendar import monthrange
+from datetime import datetime
 import pandas 
-# from .utils import *
-from .getretailinfo import *
+from forecast.service.getretailinfo import *
 CURRENT_DATE = datetime(2025,5,8)
 
 month_week_dict = {

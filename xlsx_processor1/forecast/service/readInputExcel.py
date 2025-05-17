@@ -1,7 +1,8 @@
+# readInputExcel.py
 import pandas as pd
 from openpyxl import load_workbook
 from multiprocessing import Pool, cpu_count
-from . import config
+from forecast.service import config
 
 
 def read_single_sheet(args):
@@ -22,7 +23,7 @@ def readInputExcel(input_path):
     # Store in shared config
     config.sheets = {sheet: df for sheet, df in results}
     config.return_QA_df = pd.read_excel(
-        r"C:\Users\emman\OneDrive\Desktop\final_excel_deploy\xlsx_processor1\forecast\service\Macys returns 2025.xlsx",
+        r"forecast/service/Macys returns 2025.xlsx",
         engine='openpyxl'
     )
 

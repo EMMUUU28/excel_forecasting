@@ -465,9 +465,11 @@ function Forecast() {
       for (let [key, value] of formData.entries()) {
         console.log(`${key}: ${value}`);
       }
+      console.log("Response Data from Server:", response.data);
       
-      const filePathFromServer = response.data.file_path;
-      setDownloadUrl(`${import.meta.env.VITE_API_BASE_URL}${filePathFromServer}`);
+      const filePathFromServer = response.data.file_url;
+      
+      setDownloadUrl(filePathFromServer);
       setIsFileUploaded(true);
       setErrorMessage("");
     } catch (error) {
