@@ -1,4 +1,33 @@
+def safe_int(value):
+    """Convert value to int or return None if conversion fails"""
+    if pd.isna(value):
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
             
+def safe_float(value):
+    """Convert value to float or return None if conversion fails"""
+    if pd.isna(value):
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+        
+def safe_str(value, max_length=None):
+    """Convert value to string, respecting max_length if provided"""
+    if pd.isna(value):
+        return None
+    try:
+        result = str(value).strip()
+        if max_length and len(result) > max_length:
+            result = result[:max_length]
+        return result
+    except:
+        return None            
+
 ProductDetail.objects.update_or_create(
     product_id=pid_value,
     defaults={

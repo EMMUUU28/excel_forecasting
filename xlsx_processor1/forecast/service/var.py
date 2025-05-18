@@ -9,6 +9,7 @@ class VariableLoader:
         if matching_row.empty:
             raise ValueError(f"Cross ref '{cross_ref}' not found in 'planning_df'.")
         
+        self.matched_row = matching_row # Store the matched row for later use in Database
     
         self.pid_value = matching_row['PID'].iloc[0]
         self.RLJ = matching_row['Adjusted RLJ Item'].iloc[0] 

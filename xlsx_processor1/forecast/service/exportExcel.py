@@ -3,6 +3,7 @@
 import json
 import os
 from multiprocessing import Pool, cpu_count
+from datetime import datetime
 
 # Third-party imports
 import numpy as np
@@ -22,6 +23,9 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # Local application imports
 from .readInputExcel import readInputExcel
 from forecast.service import config
+from forecast.service.adddatabase import save_macys_projection_receipts, save_monthly_forecasts
+from forecast.models import MonthlyForecast,ProductDetail
+
 
 def process_data(input_path, file_path, month_from, month_to, percentage, input_tuple):
     print("Input path:", input_path)
@@ -1935,6 +1939,197 @@ def process_category(args):
 
     wb.save(output_file)  # Save the workbook as an .xlsx file
     print(f"Workbook '{output_file}' saved successfully.")
+
+    def safe_int(value):
+        """Convert value to int or return None if conversion fails"""
+        if pd.isna(value):
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+            
+    def safe_float(value):
+        """Convert value to float or return None if conversion fails"""
+        if pd.isna(value):
+            return None
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+            
+    def safe_str(value, max_length=None):
+        """Convert value to string, respecting max_length if provided"""
+        if pd.isna(value):
+            return None
+        try:
+            result = str(value).strip()
+            if max_length and len(result) > max_length:
+                result = result[:max_length]
+            return result
+        except:
+            return None
+    def parse_date(date_value):
+        """
+        Parses a date value (string or pandas Timestamp) into a datetime.date object.
+        Handles multiple formats and NaT (Not a Time) values.
+        """
+        if pd.isna(date_value) or date_value in ["NaT", None, ""]:
+            return None  # Handle missing or NaT values
+
+        # If the value is already a pandas Timestamp, convert it to date
+        if isinstance(date_value, pd.Timestamp):
+            return date_value.date()
+
+        # Ensure the value is a string for parsing
+        date_str = str(date_value).strip()
+
+        try:
+            # Try to parse "M/D/YYYY" or "MM/DD/YYYY" format
+            return datetime.strptime(date_str.split()[0], "%m/%d/%Y").date()
+        except ValueError:
+            try:
+                # Try to parse "M/D/YYYY H:MM:SS AM/PM" format
+                return datetime.strptime(date_str.split(' ', 1)[0], "%m/%d/%Y").date()
+            except ValueError:
+                try:
+                    # Try parsing "YYYY-MM-DD HH:MM:SS" format (e.g., "2022-02-26 00:00:00")
+                    return datetime.strptime(date_str.split()[0], "%Y-%m-%d").date()
+                except ValueError:
+                    # Try various other possible formats
+                    date_formats = ["%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"]
+                    for fmt in date_formats:
+                        try:
+                            return datetime.strptime(date_str.split()[0], fmt).date()
+                        except ValueError:
+                            continue
+                    
+                    # If all parsing attempts fail, print a warning and return None
+                    print(f"Could not parse date: {date_value}")
+                    return None
+                except Exception as e:
+                    print(f"Error parsing date {date_value}: {e}")
+                    return None
+
+    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+    current_year = datetime.now().year 
+
+    
+    ProductDetail.objects.update_or_create(
+        product_id=loader.pid_value,
+        defaults={
+            "product_description": safe_str(loader.PID_Desc),
+
+            # Main identifiers
+            "blu": safe_str(loader.RLJ),
+            "mkst": safe_str(loader.MKST),
+            "currect_fc_index": safe_str(loader.Current_FC_Index),
+
+            # Classification fields
+            "safe_non_safe": safe_str(loader.Safe_Non_Safe),
+            "item_code": safe_str(loader.Item_Code),
+
+            # Store information
+            "current_door_count": safe_int(loader.Door_Count),
+            "last_store_count": safe_int(loader.Last_Str_Cnt),
+            "door_count_updated": parse_date(loader.Door_count_Updated),
+            "store_model": safe_int(loader.Store_Model),
+            "com_model": safe_int(loader.Com_Model),
+
+            # Inventory and forecast fields
+            "holiday_build_fc": safe_int(loader.Holiday_Bld_FC),
+            "macys_onhand": safe_int(loader.MCYOH),
+            "oo": safe_int(loader.OO),
+            "in_transit": safe_int(loader.nav_OO),
+            "month_to_date_shipment": safe_int(loader.MTD_SHIPMENTS),
+            "lastweek_shipment": safe_int(loader.LW_Shipments),
+            "planned_weeks_of_stock": safe_int(loader.Wks_of_Stock_OH),
+            "weeks_of_projection": safe_int(loader.Wks_of_on_Proj),
+            "last_4weeks_shipment": safe_int(loader.Last_3Wks_Ships),
+
+            # Vendor information
+            "vendor_name": safe_str(loader.Vendor_Name),
+            "min_order": safe_int(loader.Min_order),
+
+            # Projection fields
+            "rl_total": safe_int(loader.Proj),
+            "net_projection": safe_int(loader.Net_Proj),
+            "unalloc_order": safe_int(loader.Unalloc_Orders),
+
+            # Distribution center fields
+            "ma_bin": safe_int(loader.RLJ_OH),
+            "fldc": safe_int(loader.FLDC),
+            "wip_quantity": safe_int(loader.WIP),
+
+            # Status fields
+            "md_status": safe_str(loader.MD_Status_MZ1),
+            "replanishment_flag": safe_str(loader.Repl_Flag),
+            "mcom_replanishment": safe_str(loader.MCOM_RPL),
+            "pool_stock": safe_int(loader.Pool_stock),
+
+            # Date fields
+            "first_reciept_date": parse_date(loader.st_Rec_Date),
+            "last_reciept_date": parse_date(loader.Last_Rec_Date),
+            "item_age": safe_int(loader.Item_Age),
+            "first_live_date": parse_date(loader.st_Live),
+
+            # Cost and retail fields
+            "this_year_last_cost": safe_float(loader.TY_Last_Cost),
+            "macys_owned_retail": safe_float(loader.Own_Retail),
+            "awr_first_ticket_retail": safe_float(loader.AWR_1st_Tkt_Ret),
+
+            # Policy and configuration fields
+            "metal_lock": safe_float(loader.Metal_Lock),
+            "mfg_policy": safe_str(loader.MFG_Policy),
+
+            # KPI fields
+            "kpi_data_updated": safe_str(loader.KPI_Data_Updated),
+            "kpi_door_count": safe_int(loader.KPI_Door_count),
+
+            # Location fields
+            "out_of_stock_location": safe_int(loader.OOS_Locs),
+            "suspended_location_count": safe_int(loader.Suspended_Loc_Count),
+            "live_site": safe_str(loader.Live_Site),
+
+            # Product categorization fields
+            "masterstyle_description": safe_str(loader.Masterstyle_Desc),
+            "masterstyle_id": safe_str(loader.MstrSt_ID),
+
+            "department_id": safe_int(loader.Dpt_ID),
+            "department_description": safe_str(loader.Dpt_Desc),
+
+            "subclass_id": safe_int(loader.SC_ID),
+            "subclass_decription": safe_str(loader.SC_Desc),
+            "webid_description": safe_str(loader.Prod_Desc),
+
+            # Marketing fields
+            "v2c": safe_str(loader.V2C),
+            "marketing_id": safe_str(loader.Mktg_ID),
+            "std_store_return": safe_float(loader.STD_Store_Rtn),
+
+            # Planning fields
+            "last_project_review_date": parse_date(loader.Last_Proj_Review_Date),
+            "macy_spring_projection_note": safe_str(loader.Macys_Spring_Proj_Notes),
+            "planner_response": safe_str(loader.Planner_Response)
+        }
+    )
+
+
+    productmain = ProductDetail.objects.get(product_id=loader.pid_value)
+    
+
+    MonthlyForecast.objects.update_or_create(
+        product=productmain,
+        year=current_year,
+        defaults={}
+        )
+    
+    save_macys_projection_receipts(productmain, loader.matched_row, current_year)
+    save_monthly_forecasts(productmain, current_year, months, loader.TY_Unit_Sales, loader.LY_Unit_Sales, loader.LY_OH_Units, loader.TY_OH_Units, loader.TY_Receipts, loader.LY_Receipts, loader.TY_MCOM_Unit_Sales, loader.LY_MCOM_Unit_Sales, loader.TY_MCOM_OH_Units, loader.LY_MCOM_OH_Units, loader.PTD_TY_Sales, loader.LY_PTD_Sales, loader.MCOM_PTD_TY_Sales, loader.MCOM_PTD_LY_Sales, loader.OO_Total_Units, loader.OO_MCOM_Total_Units)
+
+    print(f"Product {loader.pid_value} saved successfully")	
+
+
     json_result = {}
     json_result[output_file_name] = {"Pid_to_review": pids_below_door_count_alert, "Birthstone products": all_birthstone_products,  "Pid_to_notify_to_macys": notify_macys_alert,"Upcoming birthstone products": upcoming_birthstone_products,"Added quatity using macys proj receipts":added_macys_proj_receipts_alert,"Quantity below min order":min_order_alert}
 

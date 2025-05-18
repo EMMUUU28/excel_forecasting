@@ -168,3 +168,5 @@ class MonthlyForecast(models.Model):
 
     def __str__(self):
         return f"{self.product} - {self.variable_name} - {self.year}: Jan({self.jan}), Feb({self.feb}), ... Dec({self.dec})"
+
+

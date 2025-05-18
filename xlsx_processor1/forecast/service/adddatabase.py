@@ -6,8 +6,10 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'xlsx_processor1.settings')
 django.setup()
 
-from .models import MonthlyForecast,ProductDetail
+from forecast.models import MonthlyForecast
 import pandas as pd
+
+
 
 def save_macys_projection_receipts(product, matching_row, year):
     """
