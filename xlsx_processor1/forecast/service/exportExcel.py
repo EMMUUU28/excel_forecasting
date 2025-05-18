@@ -19,12 +19,13 @@ from openpyxl.styles import (
 )
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
+from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 
 # Local application imports
 from .readInputExcel import readInputExcel
 from forecast.service import config
 from forecast.service.adddatabase import save_macys_projection_receipts, save_monthly_forecasts
-from forecast.models import MonthlyForecast,ProductDetail
+from forecast.models import MonthlyForecast, ProductDetail, StoreForecast, ComForecast, OmniForecast
 
 
 def process_data(input_path, file_path, month_from, month_to, percentage, input_tuple):
@@ -124,6 +125,150 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
     df_store = pd.DataFrame(store)
     df_coms = pd.DataFrame(coms)
     df_omni = pd.DataFrame(omni)
+
+    print("DataFrames created successfully.")
+    # Create dictionaries for each record
+    store_instances = [
+        {
+            # Define identifying fields (must match unique_together)
+            'category': row['category'],
+            'pid': row['pid'],
+            'forecast_month': row['forecast_month'],
+            
+            # All other fields
+            'lead_time': int(row['lead time']),
+            'leadtime_holiday_adjustment': row['leadtime holiday adjustment'] == 'TRUE',
+            'month_12_fc_index': row['month_12_fc_index'],
+            'loss': row['loss'],
+            'month_12_fc_index_loss': row['month_12_fc_index_(loss)'],
+            'selected_months': eval(row['selected_months']),
+            'trend': row['trend'],
+            'inventory_maintained': row['Inventory maintained'] == 'TRUE',
+            'trend_index_difference': row['trend index difference'],
+            'red_box_item': row['red_box item'] == 'TRUE',
+            'forecasting_method': row['forecasting_method'],
+            'door_count': row['Door Count'],
+            'average_com_oh': row['average com_oh'],
+            'fldc': row['FLDC'],
+            'birthstone': row['birthstone'],
+            'birthstone_month': row['birthstone_month'],
+            'considered_birthstone_required_quantity': row['considered birthstone for requried quantity'] == 'TRUE',
+            'forecast_month_required_quantity': row['forecast_month_required_quantity'],
+            'forecast_month_planned_oh': row['forecast_month_planned_oh_before_adding_qty'],
+            'next_forecast_month': row['Next_forecast_month'],
+            'next_forecast_month_required_quantity': row['Next_forecast_month_required_quantity'],
+            'next_forecast_month_planned_oh': row['Next_forecast_month_planned_oh_before_adding_qty'],
+            'added_qty_macys_soq': row['Added qtys by Macys SOQ'],
+            'forecast_month_planned_shipment': row['forecast_month_planned_shipment'],
+            'next_forecast_month_planned_shipment': row['Next_forecast_month_planned_shipment'],
+            'total_added_qty': row['Total added qty']
+        }
+        for _, row in df_store.iterrows()
+    ]
+
+    # Define which fields to use to identify existing records
+    identifiers = ['category', 'pid', 'forecast_month']
+
+    # Perform the bulk_update_or_create operation
+    StoreForecast.objects.bulk_update_or_create(
+        store_instances,
+        identifiers,
+        batch_size=1000  # Adjust based on your needs
+    )
+    print("StoreForecast data saved/updated successfully.")
+
+    # Similarly for ComForecast
+    com_instances = [
+        {
+            # Define identifying fields
+            'category': row['category'],
+            'pid': row['pid'],
+            'forecast_month': row['forecast_month'],
+            
+            # All other fields
+            'lead_time': int(row['lead time']),
+            'leadtime_holiday_adjustment': row['leadtime holiday adjustment'] == 'TRUE',
+            'selected_months': eval(row['selected_months']),
+            'com_month_12_fc_index': row['com_month_12_fc_index'],
+            'com_trend': row['com trend'],
+            'trend': row['trend'],
+            'inventory_maintained': row['Inventory maintained'] == 'TRUE',
+            'trend_index_difference': row['trend index difference'],
+            'red_box_item': row['red_box item'] == 'TRUE',
+            'forecasting_method': row['forecasting_method'],
+            'minimum_required_oh_for_com': row['minimum required oh for com'],
+            'fldc': row['FLDC'],
+            'forecast_month_required_quantity': row['forecast_month_required_quantity'],
+            'forecast_month_planned_oh': row['forecast_month_planned_oh_before_adding_qty'],
+            'next_forecast_month': row['Next_forecast_month'],
+            'next_forecast_month_required_quantity': row['Next_forecast_month_required_quantity'],
+            'next_forecast_month_planned_oh': row['Next_forecast_month_planned_oh_before_adding_qty'],
+            'added_qty_macys_soq': row['Added qtys by Macys SOQ'],
+            'vdf_status': row['VDF_status'] == 'TRUE',
+            'vdf_added_qty': row['VDF_added_qty'],
+            'forecast_month_planned_shipment': row['forecast_month_planned_shipment'],
+            'next_forecast_month_planned_shipment': row['Next_forecast_month_planned_shipment'],
+            'total_added_qty': row['Total added qty']
+        }
+        for _, row in df_coms.iterrows()
+    ]
+
+    ComForecast.objects.bulk_update_or_create(
+        com_instances,
+        identifiers,
+        batch_size=1000
+    )
+    print("ComForecast data saved/updated successfully.")
+
+    # And for OmniForecast
+    omni_instances = [
+        {
+            # Define identifying fields
+            'category': row['category'],
+            'pid': row['pid'],
+            'forecast_month': row['forecast_month'],
+            
+            # All other fields
+            'lead_time': int(row['lead time']),
+            'leadtime_holiday_adjustment': row['leadtime holiday adjustment'] == 'TRUE',
+            'selected_months': eval(row['selected_months']),
+            'com_month_12_fc_index': row['Com month_12_fc_index'],
+            'com_trend': row['com trend'],
+            'com_inventory_maintained': row['Com Inventory maintained'] == 'TRUE',
+            'trend_index_difference': row['trend index difference'],
+            'red_box_item': row['red_box item'] == 'TRUE',
+            'forecasting_method': row['forecasting_method'],
+            'minimum_required_oh_for_com': row['minimum required oh for com'],
+            'com_fldc': row['Com FLDC'],
+            'forecast_month_required_quantity': row['forecast_month_required_quantity'],
+            'next_forecast_month': row['Next_forecast_month'],
+            'next_forecast_month_required_quantity': row['Next_forecast_month_required_quantity'],
+            'store_month_12_fc_index': row['store_month_12_fc_index'],
+            'loss': row['loss'],
+            'store_month_12_fc_index_loss': row['store_month_12_fc_index_(loss)'],
+            'trend': row['trend'],
+            'store_inventory_maintained': row['store Inventory maintained'] == 'TRUE',
+            'door_count': row['Door Count'],
+            'store_fldc': row['store FLDC'],
+            'birthstone': row['birthstone'],
+            'birthstone_month': row['birthstone_month'],
+            'considered_birthstone_required_quantity': row['considered birthstone for requried quantity'] == 'TRUE',
+            'forecast_month_planned_oh': row['forecast_month_planned_oh_before_adding_qty'],
+            'next_forecast_month_planned_oh': row['Next_forecast_month_planned_oh_before_adding_qty'],
+            'added_qty_macys_soq': row['Added qtys by Macys SOQ'],
+            'forecast_month_planned_shipment': row['forecast_month_planned_shipment'],
+            'next_forecast_month_planned_shipment': row['Next_forecast_month_planned_shipment'],
+            'total_added_qty': row['Total added qty']
+        }
+        for _, row in df_omni.iterrows()
+    ]
+
+    OmniForecast.objects.bulk_update_or_create(
+        omni_instances,
+        identifiers,
+        batch_size=1000
+    )
+    print("OmniForecast data saved/updated successfully.")
 
     # Write to different sheets in one Excel file
     with pd.ExcelWriter("forecast_summaryfor_april_4.xlsx", engine="openpyxl") as writer:

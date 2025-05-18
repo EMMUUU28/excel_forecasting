@@ -1,19 +1,19 @@
 import os
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
 import time
 import json 
-# from .forecastUtils import make_zip_and_delete,process_data,get_previous_retail_week
+import zipfile 
+
+from django.conf import settings
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.http import FileResponse
-from rest_framework import status
-from .models import ProductDetail, MonthlyForecast
-from rest_framework import viewsets
-from django.shortcuts import get_object_or_404
-from .serializers import ProductDetailSerializer, MonthlyForecastSerializer
-import zipfile 
+from rest_framework import status, viewsets
+
+from .models import ProductDetail, MonthlyForecast, StoreForecast, ComForecast, OmniForecast
+from .serializers import ProductDetailSerializer, MonthlyForecastSerializer, StoreForecastSerializer, ComForecastSerializer, OmniForecastSerializer
 from .service.exportExcel import process_data
 
 def make_zip_and_delete(folder_path):
@@ -48,11 +48,12 @@ class UploadXlsxAPIView(APIView):
 
     def post(self, request):
         uploaded_file = request.FILES.get('file')
-        output_folder = request.data.get('output_filename')
+        output_folder = request.data.get('output_filename', '').strip()
         month_from = request.data.get('month_from')
         month_to = request.data.get('month_to')
         percentage = request.data.get('percentage')
         categories = request.data.get('categories')
+
 
         if not uploaded_file or not output_folder:
             return Response({'error': 'File or output folder not provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -147,3 +148,17 @@ class ProductDetailViewSet(viewsets.ViewSet):
             "product_details": product_serializer.data,
             "monthly_forecast": MonthlyForecastSerializer(MonthlyForecast.objects.filter(product=product), many=True).data
         })
+
+
+class StoreForecastViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = StoreForecast.objects.all()
+    serializer_class = StoreForecastSerializer
+
+
+class ComForecastViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ComForecast.objects.all()
+    serializer_class = ComForecastSerializer
+
+class OmniForecastViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = OmniForecast.objects.all()
+    serializer_class = OmniForecastSerializer

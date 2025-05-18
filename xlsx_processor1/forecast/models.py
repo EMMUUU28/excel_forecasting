@@ -170,3 +170,132 @@ class MonthlyForecast(models.Model):
         return f"{self.product} - {self.variable_name} - {self.year}: Jan({self.jan}), Feb({self.feb}), ... Dec({self.dec})"
 
 
+from bulk_update_or_create import BulkUpdateOrCreateQuerySet
+
+class StoreForecastQuerySet(BulkUpdateOrCreateQuerySet):
+    pass
+
+class ComForecastQuerySet(BulkUpdateOrCreateQuerySet):
+    pass
+
+class OmniForecastQuerySet(BulkUpdateOrCreateQuerySet):
+    pass
+  
+class StoreForecast(models.Model):
+    category = models.CharField(max_length=100)
+    pid = models.CharField(max_length=100)
+    lead_time = models.IntegerField()
+    leadtime_holiday_adjustment = models.BooleanField()
+    month_12_fc_index = models.FloatField()
+    loss = models.FloatField()
+    month_12_fc_index_loss = models.FloatField()
+    selected_months = models.JSONField()
+    trend = models.FloatField()
+    inventory_maintained = models.BooleanField()
+    trend_index_difference = models.FloatField()
+    red_box_item = models.BooleanField()
+    forecasting_method = models.CharField(max_length=100)
+    door_count = models.IntegerField()
+    average_com_oh = models.FloatField()
+    fldc = models.IntegerField()
+    birthstone = models.CharField(max_length=100)
+    birthstone_month = models.CharField(max_length=100)
+    considered_birthstone_required_quantity = models.BooleanField()
+    forecast_month = models.CharField(max_length=10)
+    forecast_month_required_quantity = models.FloatField()
+    forecast_month_planned_oh = models.IntegerField()
+    next_forecast_month = models.CharField(max_length=10)
+    next_forecast_month_required_quantity = models.FloatField()
+    next_forecast_month_planned_oh = models.IntegerField()
+    added_qty_macys_soq = models.IntegerField()
+    forecast_month_planned_shipment = models.FloatField()
+    next_forecast_month_planned_shipment = models.FloatField()
+    total_added_qty = models.FloatField()
+    objects = StoreForecastQuerySet.as_manager()
+
+    class Meta:
+        # Define your unique fields to identify existing records
+        unique_together = ('category', 'pid', 'forecast_month')
+
+
+class ComForecast(models.Model):
+    category = models.CharField(max_length=100)
+    pid = models.CharField(max_length=100)
+    lead_time = models.IntegerField()
+    leadtime_holiday_adjustment = models.BooleanField()
+    selected_months = models.JSONField()
+    com_month_12_fc_index = models.FloatField()
+    com_trend = models.FloatField()
+    trend = models.FloatField()
+    inventory_maintained = models.BooleanField()
+    trend_index_difference = models.FloatField()
+    red_box_item = models.BooleanField()
+    forecasting_method = models.CharField(max_length=100)
+    minimum_required_oh_for_com = models.FloatField()
+    fldc = models.IntegerField()
+    forecast_month = models.CharField(max_length=10)
+    forecast_month_required_quantity = models.FloatField()
+    forecast_month_planned_oh = models.IntegerField()
+    next_forecast_month = models.CharField(max_length=10)
+    next_forecast_month_required_quantity = models.FloatField()
+    next_forecast_month_planned_oh = models.IntegerField()
+    added_qty_macys_soq = models.IntegerField()
+    vdf_status = models.BooleanField()
+    vdf_added_qty = models.IntegerField()
+    forecast_month_planned_shipment = models.FloatField()
+    next_forecast_month_planned_shipment = models.IntegerField()
+    total_added_qty = models.IntegerField()
+    objects = ComForecastQuerySet.as_manager()
+    
+    class Meta:
+        unique_together = ('category', 'pid', 'forecast_month')
+
+
+class OmniForecast(models.Model):
+    category = models.CharField(max_length=100)
+    pid = models.CharField(max_length=100)
+    lead_time = models.IntegerField()
+    leadtime_holiday_adjustment = models.BooleanField()
+    selected_months = models.JSONField()
+
+    com_month_12_fc_index = models.FloatField()
+    com_trend = models.FloatField()
+    com_inventory_maintained = models.BooleanField()
+
+    trend_index_difference = models.FloatField()
+    red_box_item = models.BooleanField()
+    forecasting_method = models.CharField(max_length=100)
+
+    minimum_required_oh_for_com = models.FloatField()
+    com_fldc = models.IntegerField()
+
+    forecast_month = models.CharField(max_length=10)
+    forecast_month_required_quantity = models.FloatField()
+
+    next_forecast_month = models.CharField(max_length=10)
+    next_forecast_month_required_quantity = models.FloatField()
+
+    store_month_12_fc_index = models.FloatField()
+    loss = models.FloatField()
+    store_month_12_fc_index_loss = models.FloatField()
+    trend = models.FloatField()
+    store_inventory_maintained = models.BooleanField()
+
+    door_count = models.IntegerField()
+    store_fldc = models.IntegerField()
+
+    birthstone = models.CharField(max_length=100)
+    birthstone_month = models.CharField(max_length=100)
+    considered_birthstone_required_quantity = models.BooleanField()
+
+    forecast_month_planned_oh = models.IntegerField()
+    next_forecast_month_planned_oh = models.IntegerField()
+
+    added_qty_macys_soq = models.IntegerField()
+    forecast_month_planned_shipment = models.FloatField()
+    next_forecast_month_planned_shipment = models.FloatField()
+    total_added_qty = models.FloatField()
+    objects = OmniForecastQuerySet.as_manager()
+    
+    class Meta:
+        unique_together = ('category', 'pid', 'forecast_month')
