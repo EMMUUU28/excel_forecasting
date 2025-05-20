@@ -19,7 +19,6 @@ from openpyxl.styles import (
 )
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
-from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 
 # Local application imports
 from .readInputExcel import readInputExcel
@@ -126,6 +125,26 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
     df_coms = pd.DataFrame(coms)
     df_omni = pd.DataFrame(omni)
 
+    def parse_selected_months(value):
+        if isinstance(value, (list, tuple)):
+            # Already a list or tuple, return as is
+            return value
+        elif isinstance(value, str):
+            try:
+                # Try to evaluate it as a string representation of a list
+                return eval(value)
+            except:
+                # If eval fails, try json.loads
+                import json
+                try:
+                    return json.loads(value)
+                except:
+                    # If all parsing fails, return an empty list as fallback
+                    return []
+        else:
+            # Not a string or list, return empty list
+            return []
+        
     print("DataFrames created successfully.")
     # Create dictionaries for each record
     store_instances = [
@@ -141,7 +160,7 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
             'month_12_fc_index': row['month_12_fc_index'],
             'loss': row['loss'],
             'month_12_fc_index_loss': row['month_12_fc_index_(loss)'],
-            'selected_months': eval(row['selected_months']),
+            'selected_months': parse_selected_months(row['selected_months']),
             'trend': row['trend'],
             'inventory_maintained': row['Inventory maintained'] == 'TRUE',
             'trend_index_difference': row['trend index difference'],
@@ -166,17 +185,7 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
         for _, row in df_store.iterrows()
     ]
 
-    # Define which fields to use to identify existing records
-    identifiers = ['category', 'pid', 'forecast_month']
-
-    # Perform the bulk_update_or_create operation
-    StoreForecast.objects.bulk_update_or_create(
-        store_instances,
-        identifiers,
-        batch_size=1000  # Adjust based on your needs
-    )
-    print("StoreForecast data saved/updated successfully.")
-
+    
     # Similarly for ComForecast
     com_instances = [
         {
@@ -188,7 +197,7 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
             # All other fields
             'lead_time': int(row['lead time']),
             'leadtime_holiday_adjustment': row['leadtime holiday adjustment'] == 'TRUE',
-            'selected_months': eval(row['selected_months']),
+            'selected_months': parse_selected_months(row['selected_months']),
             'com_month_12_fc_index': row['com_month_12_fc_index'],
             'com_trend': row['com trend'],
             'trend': row['trend'],
@@ -213,13 +222,6 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
         for _, row in df_coms.iterrows()
     ]
 
-    ComForecast.objects.bulk_update_or_create(
-        com_instances,
-        identifiers,
-        batch_size=1000
-    )
-    print("ComForecast data saved/updated successfully.")
-
     # And for OmniForecast
     omni_instances = [
         {
@@ -231,7 +233,7 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
             # All other fields
             'lead_time': int(row['lead time']),
             'leadtime_holiday_adjustment': row['leadtime holiday adjustment'] == 'TRUE',
-            'selected_months': eval(row['selected_months']),
+            'selected_months': parse_selected_months(row['selected_months']),
             'com_month_12_fc_index': row['Com month_12_fc_index'],
             'com_trend': row['com trend'],
             'com_inventory_maintained': row['Com Inventory maintained'] == 'TRUE',
@@ -263,13 +265,120 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
         for _, row in df_omni.iterrows()
     ]
 
-    OmniForecast.objects.bulk_update_or_create(
-        omni_instances,
-        identifiers,
-        batch_size=1000
-    )
-    print("OmniForecast data saved/updated successfully.")
+    # # For StoreForecast
+    # print("Starting StoreForecast data save/update...")
+    # for instance in store_instances:
+    #     StoreForecast.objects.update_or_create(
+    #         category=instance['category'],
+    #         pid=instance['pid'],
+    #         forecast_month=instance['forecast_month'],
+    #         defaults={
+    #             'lead_time': instance['lead_time'],
+    #             'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
+    #             'month_12_fc_index': instance['month_12_fc_index'],
+    #             'loss': instance['loss'],
+    #             'month_12_fc_index_loss': instance['month_12_fc_index_loss'],
+    #             'selected_months': instance['selected_months'],
+    #             'trend': instance['trend'],
+    #             'inventory_maintained': instance['inventory_maintained'],
+    #             'trend_index_difference': instance['trend_index_difference'],
+    #             'red_box_item': instance['red_box_item'],
+    #             'forecasting_method': instance['forecasting_method'],
+    #             'door_count': instance['door_count'],
+    #             'average_com_oh': instance['average_com_oh'],
+    #             'fldc': instance['fldc'],
+    #             'birthstone': instance['birthstone'],
+    #             'birthstone_month': instance['birthstone_month'],
+    #             'considered_birthstone_required_quantity': instance['considered_birthstone_required_quantity'],
+    #             'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
+    #             'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
+    #             'next_forecast_month': instance['next_forecast_month'],
+    #             'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
+    #             'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
+    #             'added_qty_macys_soq': instance['added_qty_macys_soq'],
+    #             'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
+    #             'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
+    #             'total_added_qty': instance['total_added_qty']
+    #         }
+    #     )
+    # print("StoreForecast data saved/updated successfully.")
 
+    # # For ComForecast
+    # print("Starting ComForecast data save/update...")
+    # for instance in com_instances:
+    #     ComForecast.objects.update_or_create(
+    #         category=instance['category'],
+    #         pid=instance['pid'],
+    #         forecast_month=instance['forecast_month'],
+    #         defaults={
+    #             'lead_time': instance['lead_time'],
+    #             'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
+    #             'selected_months': instance['selected_months'],
+    #             'com_month_12_fc_index': instance['com_month_12_fc_index'],
+    #             'com_trend': instance['com_trend'],
+    #             'trend': instance['trend'],
+    #             'inventory_maintained': instance['inventory_maintained'],
+    #             'trend_index_difference': instance['trend_index_difference'],
+    #             'red_box_item': instance['red_box_item'],
+    #             'forecasting_method': instance['forecasting_method'],
+    #             'minimum_required_oh_for_com': instance['minimum_required_oh_for_com'],
+    #             'fldc': instance['fldc'],
+    #             'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
+    #             'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
+    #             'next_forecast_month': instance['next_forecast_month'],
+    #             'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
+    #             'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
+    #             'added_qty_macys_soq': instance['added_qty_macys_soq'],
+    #             'vdf_status': instance['vdf_status'],
+    #             'vdf_added_qty': instance['vdf_added_qty'],
+    #             'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
+    #             'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
+    #             'total_added_qty': instance['total_added_qty']
+    #         }
+    #     )
+    # print("ComForecast data saved/updated successfully.")
+
+    # # For OmniForecast
+    # print("Starting OmniForecast data save/update...")
+    # for instance in omni_instances:
+    #     OmniForecast.objects.update_or_create(
+    #         category=instance['category'],
+    #         pid=instance['pid'],
+    #         forecast_month=instance['forecast_month'],
+    #         defaults={
+    #             'lead_time': instance['lead_time'],
+    #             'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
+    #             'selected_months': instance['selected_months'],
+    #             'com_month_12_fc_index': instance['com_month_12_fc_index'],
+    #             'com_trend': instance['com_trend'],
+    #             'com_inventory_maintained': instance['com_inventory_maintained'],
+    #             'trend_index_difference': instance['trend_index_difference'],
+    #             'red_box_item': instance['red_box_item'],
+    #             'forecasting_method': instance['forecasting_method'],
+    #             'minimum_required_oh_for_com': instance['minimum_required_oh_for_com'],
+    #             'com_fldc': instance['com_fldc'],
+    #             'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
+    #             'next_forecast_month': instance['next_forecast_month'],
+    #             'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
+    #             'store_month_12_fc_index': instance['store_month_12_fc_index'],
+    #             'loss': instance['loss'],
+    #             'store_month_12_fc_index_loss': instance['store_month_12_fc_index_loss'],
+    #             'trend': instance['trend'],
+    #             'store_inventory_maintained': instance['store_inventory_maintained'],
+    #             'door_count': instance['door_count'],
+    #             'store_fldc': instance['store_fldc'],
+    #             'birthstone': instance['birthstone'],
+    #             'birthstone_month': instance['birthstone_month'],
+    #             'considered_birthstone_required_quantity': instance['considered_birthstone_required_quantity'],
+    #             'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
+    #             'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
+    #             'added_qty_macys_soq': instance['added_qty_macys_soq'],
+    #             'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
+    #             'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
+    #             'total_added_qty': instance['total_added_qty']
+    #         }
+    #     )
+    # print("OmniForecast data saved/updated successfully.")
     # Write to different sheets in one Excel file
     with pd.ExcelWriter("forecast_summaryfor_april_4.xlsx", engine="openpyxl") as writer:
         df_store.to_excel(writer, sheet_name="store", index=False)
@@ -2077,6 +2186,197 @@ def process_category(args):
         for row in ws[f"B{start_row+50}:W{start_row+50}"]:
             for cell in row:
                 cell.border = gridline_top_bottom
+    
+        def safe_int(value):
+            """Convert value to int or return None if conversion fails"""
+            if pd.isna(value):
+                return None
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return None
+                
+        def safe_float(value):
+            """Convert value to float or return None if conversion fails"""
+            if pd.isna(value):
+                return None
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+                
+        def safe_str(value, max_length=None):
+            """Convert value to string, respecting max_length if provided"""
+            if pd.isna(value):
+                return None
+            try:
+                result = str(value).strip()
+                if max_length and len(result) > max_length:
+                    result = result[:max_length]
+                return result
+            except:
+                return None
+        def parse_date(date_value):
+            """
+            Parses a date value (string or pandas Timestamp) into a datetime.date object.
+            Handles multiple formats and NaT (Not a Time) values.
+            """
+            if pd.isna(date_value) or date_value in ["NaT", None, ""]:
+                return None  # Handle missing or NaT values
+
+            # If the value is already a pandas Timestamp, convert it to date
+            if isinstance(date_value, pd.Timestamp):
+                return date_value.date()
+
+            # Ensure the value is a string for parsing
+            date_str = str(date_value).strip()
+
+            try:
+                # Try to parse "M/D/YYYY" or "MM/DD/YYYY" format
+                return datetime.strptime(date_str.split()[0], "%m/%d/%Y").date()
+            except ValueError:
+                try:
+                    # Try to parse "M/D/YYYY H:MM:SS AM/PM" format
+                    return datetime.strptime(date_str.split(' ', 1)[0], "%m/%d/%Y").date()
+                except ValueError:
+                    try:
+                        # Try parsing "YYYY-MM-DD HH:MM:SS" format (e.g., "2022-02-26 00:00:00")
+                        return datetime.strptime(date_str.split()[0], "%Y-%m-%d").date()
+                    except ValueError:
+                        # Try various other possible formats
+                        date_formats = ["%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"]
+                        for fmt in date_formats:
+                            try:
+                                return datetime.strptime(date_str.split()[0], fmt).date()
+                            except ValueError:
+                                continue
+                        
+                        # If all parsing attempts fail, print a warning and return None
+                        print(f"Could not parse date: {date_value}")
+                        return None
+                    except Exception as e:
+                        print(f"Error parsing date {date_value}: {e}")
+                        return None
+
+        months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+        current_year = datetime.now().year 
+
+        
+        ProductDetail.objects.update_or_create(
+            product_id=loader.pid_value,
+            defaults={
+                "product_description": safe_str(loader.PID_Desc),
+
+                # Main identifiers
+                "blu": safe_str(loader.RLJ),
+                "mkst": safe_str(loader.MKST),
+                "currect_fc_index": safe_str(loader.Current_FC_Index),
+
+                # Classification fields
+                "safe_non_safe": safe_str(loader.Safe_Non_Safe),
+                "item_code": safe_str(loader.Item_Code),
+
+                # Store information
+                "current_door_count": safe_int(loader.Door_Count),
+                "last_store_count": safe_int(loader.Last_Str_Cnt),
+                "door_count_updated": parse_date(loader.Door_count_Updated),
+                "store_model": safe_int(loader.Store_Model),
+                "com_model": safe_int(loader.Com_Model),
+
+                # Inventory and forecast fields
+                "holiday_build_fc": safe_int(loader.Holiday_Bld_FC),
+                "macys_onhand": safe_int(loader.MCYOH),
+                "oo": safe_int(loader.OO),
+                "in_transit": safe_int(loader.nav_OO),
+                "month_to_date_shipment": safe_int(loader.MTD_SHIPMENTS),
+                "lastweek_shipment": safe_int(loader.LW_Shipments),
+                "planned_weeks_of_stock": safe_int(loader.Wks_of_Stock_OH),
+                "weeks_of_projection": safe_int(loader.Wks_of_on_Proj),
+                "last_4weeks_shipment": safe_int(loader.Last_3Wks_Ships),
+
+                # Vendor information
+                "vendor_name": safe_str(loader.Vendor_Name),
+                "min_order": safe_int(loader.Min_order),
+
+                # Projection fields
+                "rl_total": safe_int(loader.Proj),
+                "net_projection": safe_int(loader.Net_Proj),
+                "unalloc_order": safe_int(loader.Unalloc_Orders),
+
+                # Distribution center fields
+                "ma_bin": safe_int(loader.RLJ_OH),
+                "fldc": safe_int(loader.FLDC),
+                "wip_quantity": safe_int(loader.WIP),
+
+                # Status fields
+                "md_status": safe_str(loader.MD_Status_MZ1),
+                "replanishment_flag": safe_str(loader.Repl_Flag),
+                "mcom_replanishment": safe_str(loader.MCOM_RPL),
+                "pool_stock": safe_int(loader.Pool_stock),
+
+                # Date fields
+                "first_reciept_date": parse_date(loader.st_Rec_Date),
+                "last_reciept_date": parse_date(loader.Last_Rec_Date),
+                "item_age": safe_int(loader.Item_Age),
+                "first_live_date": parse_date(loader.st_Live),
+
+                # Cost and retail fields
+                "this_year_last_cost": safe_float(loader.TY_Last_Cost),
+                "macys_owned_retail": safe_float(loader.Own_Retail),
+                "awr_first_ticket_retail": safe_float(loader.AWR_1st_Tkt_Ret),
+
+                # Policy and configuration fields
+                "metal_lock": safe_float(loader.Metal_Lock),
+                "mfg_policy": safe_str(loader.MFG_Policy),
+
+                # KPI fields
+                "kpi_data_updated": safe_str(loader.KPI_Data_Updated),
+                "kpi_door_count": safe_int(loader.KPI_Door_count),
+
+                # Location fields
+                "out_of_stock_location": safe_int(loader.OOS_Locs),
+                "suspended_location_count": safe_int(loader.Suspended_Loc_Count),
+                "live_site": safe_str(loader.Live_Site),
+
+                # Product categorization fields
+                "masterstyle_description": safe_str(loader.Masterstyle_Desc),
+                "masterstyle_id": safe_str(loader.MstrSt_ID),
+
+                "department_id": safe_int(loader.Dpt_ID),
+                "department_description": safe_str(loader.Dpt_Desc),
+
+                "subclass_id": safe_int(loader.SC_ID),
+                "subclass_decription": safe_str(loader.SC_Desc),
+                "webid_description": safe_str(loader.Prod_Desc),
+
+                # Marketing fields
+                "v2c": safe_str(loader.V2C),
+                "marketing_id": safe_str(loader.Mktg_ID),
+                "std_store_return": safe_float(loader.STD_Store_Rtn),
+
+                # Planning fields
+                "last_project_review_date": parse_date(loader.Last_Proj_Review_Date),
+                "macy_spring_projection_note": safe_str(loader.Macys_Spring_Proj_Notes),
+                "planner_response": safe_str(loader.Planner_Response)
+            }
+        )
+
+
+        productmain = ProductDetail.objects.get(product_id=loader.pid_value)
+    
+
+        # MonthlyForecast.objects.update_or_create(
+        #     product=productmain,
+        #     variable_name="TY_Unit_Sales",
+        #     year=current_year,
+        #     defaults={}
+        #     )
+
+        
+        save_macys_projection_receipts(productmain, loader.matched_row, current_year)
+        save_monthly_forecasts(productmain, current_year, months, loader.TY_Unit_Sales, loader.LY_Unit_Sales, loader.LY_OH_Units, loader.TY_OH_Units, loader.TY_Receipts, loader.LY_Receipts, loader.TY_MCOM_Unit_Sales, loader.LY_MCOM_Unit_Sales, loader.TY_MCOM_OH_Units, loader.LY_MCOM_OH_Units, loader.PTD_TY_Sales, loader.LY_PTD_Sales, loader.MCOM_PTD_TY_Sales, loader.MCOM_PTD_LY_Sales, loader.OO_Total_Units, loader.OO_MCOM_Total_Units)
+
+        print(f"Product {loader.pid_value} saved successfully")	
     # Define border style for left and right only
 
         
@@ -2085,194 +2385,7 @@ def process_category(args):
     wb.save(output_file)  # Save the workbook as an .xlsx file
     print(f"Workbook '{output_file}' saved successfully.")
 
-    def safe_int(value):
-        """Convert value to int or return None if conversion fails"""
-        if pd.isna(value):
-            return None
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return None
-            
-    def safe_float(value):
-        """Convert value to float or return None if conversion fails"""
-        if pd.isna(value):
-            return None
-        try:
-            return float(value)
-        except (ValueError, TypeError):
-            return None
-            
-    def safe_str(value, max_length=None):
-        """Convert value to string, respecting max_length if provided"""
-        if pd.isna(value):
-            return None
-        try:
-            result = str(value).strip()
-            if max_length and len(result) > max_length:
-                result = result[:max_length]
-            return result
-        except:
-            return None
-    def parse_date(date_value):
-        """
-        Parses a date value (string or pandas Timestamp) into a datetime.date object.
-        Handles multiple formats and NaT (Not a Time) values.
-        """
-        if pd.isna(date_value) or date_value in ["NaT", None, ""]:
-            return None  # Handle missing or NaT values
-
-        # If the value is already a pandas Timestamp, convert it to date
-        if isinstance(date_value, pd.Timestamp):
-            return date_value.date()
-
-        # Ensure the value is a string for parsing
-        date_str = str(date_value).strip()
-
-        try:
-            # Try to parse "M/D/YYYY" or "MM/DD/YYYY" format
-            return datetime.strptime(date_str.split()[0], "%m/%d/%Y").date()
-        except ValueError:
-            try:
-                # Try to parse "M/D/YYYY H:MM:SS AM/PM" format
-                return datetime.strptime(date_str.split(' ', 1)[0], "%m/%d/%Y").date()
-            except ValueError:
-                try:
-                    # Try parsing "YYYY-MM-DD HH:MM:SS" format (e.g., "2022-02-26 00:00:00")
-                    return datetime.strptime(date_str.split()[0], "%Y-%m-%d").date()
-                except ValueError:
-                    # Try various other possible formats
-                    date_formats = ["%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"]
-                    for fmt in date_formats:
-                        try:
-                            return datetime.strptime(date_str.split()[0], fmt).date()
-                        except ValueError:
-                            continue
-                    
-                    # If all parsing attempts fail, print a warning and return None
-                    print(f"Could not parse date: {date_value}")
-                    return None
-                except Exception as e:
-                    print(f"Error parsing date {date_value}: {e}")
-                    return None
-
-    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-    current_year = datetime.now().year 
-
     
-    ProductDetail.objects.update_or_create(
-        product_id=loader.pid_value,
-        defaults={
-            "product_description": safe_str(loader.PID_Desc),
-
-            # Main identifiers
-            "blu": safe_str(loader.RLJ),
-            "mkst": safe_str(loader.MKST),
-            "currect_fc_index": safe_str(loader.Current_FC_Index),
-
-            # Classification fields
-            "safe_non_safe": safe_str(loader.Safe_Non_Safe),
-            "item_code": safe_str(loader.Item_Code),
-
-            # Store information
-            "current_door_count": safe_int(loader.Door_Count),
-            "last_store_count": safe_int(loader.Last_Str_Cnt),
-            "door_count_updated": parse_date(loader.Door_count_Updated),
-            "store_model": safe_int(loader.Store_Model),
-            "com_model": safe_int(loader.Com_Model),
-
-            # Inventory and forecast fields
-            "holiday_build_fc": safe_int(loader.Holiday_Bld_FC),
-            "macys_onhand": safe_int(loader.MCYOH),
-            "oo": safe_int(loader.OO),
-            "in_transit": safe_int(loader.nav_OO),
-            "month_to_date_shipment": safe_int(loader.MTD_SHIPMENTS),
-            "lastweek_shipment": safe_int(loader.LW_Shipments),
-            "planned_weeks_of_stock": safe_int(loader.Wks_of_Stock_OH),
-            "weeks_of_projection": safe_int(loader.Wks_of_on_Proj),
-            "last_4weeks_shipment": safe_int(loader.Last_3Wks_Ships),
-
-            # Vendor information
-            "vendor_name": safe_str(loader.Vendor_Name),
-            "min_order": safe_int(loader.Min_order),
-
-            # Projection fields
-            "rl_total": safe_int(loader.Proj),
-            "net_projection": safe_int(loader.Net_Proj),
-            "unalloc_order": safe_int(loader.Unalloc_Orders),
-
-            # Distribution center fields
-            "ma_bin": safe_int(loader.RLJ_OH),
-            "fldc": safe_int(loader.FLDC),
-            "wip_quantity": safe_int(loader.WIP),
-
-            # Status fields
-            "md_status": safe_str(loader.MD_Status_MZ1),
-            "replanishment_flag": safe_str(loader.Repl_Flag),
-            "mcom_replanishment": safe_str(loader.MCOM_RPL),
-            "pool_stock": safe_int(loader.Pool_stock),
-
-            # Date fields
-            "first_reciept_date": parse_date(loader.st_Rec_Date),
-            "last_reciept_date": parse_date(loader.Last_Rec_Date),
-            "item_age": safe_int(loader.Item_Age),
-            "first_live_date": parse_date(loader.st_Live),
-
-            # Cost and retail fields
-            "this_year_last_cost": safe_float(loader.TY_Last_Cost),
-            "macys_owned_retail": safe_float(loader.Own_Retail),
-            "awr_first_ticket_retail": safe_float(loader.AWR_1st_Tkt_Ret),
-
-            # Policy and configuration fields
-            "metal_lock": safe_float(loader.Metal_Lock),
-            "mfg_policy": safe_str(loader.MFG_Policy),
-
-            # KPI fields
-            "kpi_data_updated": safe_str(loader.KPI_Data_Updated),
-            "kpi_door_count": safe_int(loader.KPI_Door_count),
-
-            # Location fields
-            "out_of_stock_location": safe_int(loader.OOS_Locs),
-            "suspended_location_count": safe_int(loader.Suspended_Loc_Count),
-            "live_site": safe_str(loader.Live_Site),
-
-            # Product categorization fields
-            "masterstyle_description": safe_str(loader.Masterstyle_Desc),
-            "masterstyle_id": safe_str(loader.MstrSt_ID),
-
-            "department_id": safe_int(loader.Dpt_ID),
-            "department_description": safe_str(loader.Dpt_Desc),
-
-            "subclass_id": safe_int(loader.SC_ID),
-            "subclass_decription": safe_str(loader.SC_Desc),
-            "webid_description": safe_str(loader.Prod_Desc),
-
-            # Marketing fields
-            "v2c": safe_str(loader.V2C),
-            "marketing_id": safe_str(loader.Mktg_ID),
-            "std_store_return": safe_float(loader.STD_Store_Rtn),
-
-            # Planning fields
-            "last_project_review_date": parse_date(loader.Last_Proj_Review_Date),
-            "macy_spring_projection_note": safe_str(loader.Macys_Spring_Proj_Notes),
-            "planner_response": safe_str(loader.Planner_Response)
-        }
-    )
-
-
-    productmain = ProductDetail.objects.get(product_id=loader.pid_value)
-    
-
-    MonthlyForecast.objects.update_or_create(
-        product=productmain,
-        year=current_year,
-        defaults={}
-        )
-    
-    save_macys_projection_receipts(productmain, loader.matched_row, current_year)
-    save_monthly_forecasts(productmain, current_year, months, loader.TY_Unit_Sales, loader.LY_Unit_Sales, loader.LY_OH_Units, loader.TY_OH_Units, loader.TY_Receipts, loader.LY_Receipts, loader.TY_MCOM_Unit_Sales, loader.LY_MCOM_Unit_Sales, loader.TY_MCOM_OH_Units, loader.LY_MCOM_OH_Units, loader.PTD_TY_Sales, loader.LY_PTD_Sales, loader.MCOM_PTD_TY_Sales, loader.MCOM_PTD_LY_Sales, loader.OO_Total_Units, loader.OO_MCOM_Total_Units)
-
-    print(f"Product {loader.pid_value} saved successfully")	
 
 
     json_result = {}

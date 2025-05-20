@@ -11,6 +11,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status, viewsets
+from rest_framework.viewsets import ViewSet
+from rest_framework.decorators import action
 
 from .models import ProductDetail, MonthlyForecast, StoreForecast, ComForecast, OmniForecast
 from .serializers import ProductDetailSerializer, MonthlyForecastSerializer, StoreForecastSerializer, ComForecastSerializer, OmniForecastSerializer
@@ -114,9 +116,22 @@ class ProductDetailViewSet(viewsets.ViewSet):
         forecasts = MonthlyForecast.objects.filter(product=product)
         forecast_serializer = MonthlyForecastSerializer(forecasts, many=True)
         
+       # Fetch additional forecasts by pid
+        store_forecasts = StoreForecast.objects.filter(pid=pk)
+        store_serializer = StoreForecastSerializer(store_forecasts, many=True)
+
+        com_forecasts = ComForecast.objects.filter(pid=pk)
+        com_serializer = ComForecastSerializer(com_forecasts, many=True)
+
+        omni_forecasts = OmniForecast.objects.filter(pid=pk)
+        omni_serializer = OmniForecastSerializer(omni_forecasts, many=True)
+
         return Response({
             "product_details": product_serializer.data,
-            "monthly_forecast": forecast_serializer.data
+            "monthly_forecast": forecast_serializer.data,
+            "store_forecast": store_serializer.data,
+            "com_forecast": com_serializer.data,
+            "omni_forecast": omni_serializer.data
         })
     
     def update(self, request, pk=None):
@@ -148,6 +163,54 @@ class ProductDetailViewSet(viewsets.ViewSet):
             "product_details": product_serializer.data,
             "monthly_forecast": MonthlyForecastSerializer(MonthlyForecast.objects.filter(product=product), many=True).data
         })
+
+
+
+
+class ForecastViewSet(ViewSet):
+
+    @action(detail=False, methods=["get"])
+    def filter_products(self, request):
+        category      = request.query_params.get("category")
+        birthstone    = request.query_params.get("birthstone")
+        red_box_item  = request.query_params.get("red_box_item")
+        vdf_status    = request.query_params.get("vdf_status")
+        product_type  = request.query_params.get("product_type")
+
+        response = {}
+
+        if not product_type or product_type == "store":
+            store_qs = StoreForecast.objects.all()
+            if category:
+                store_qs = store_qs.filter(category__iexact=category)
+            if birthstone:
+                store_qs = store_qs.filter(birthstone__iexact=birthstone)
+            if red_box_item is not None:
+                flag = red_box_item.lower() == "true"
+                store_qs = store_qs.filter(red_box_item=flag)
+            response["store_products"] = StoreForecastSerializer(store_qs, many=True).data
+
+        if not product_type or product_type == "com":
+            com_qs = ComForecast.objects.all()
+            if category:
+                com_qs = com_qs.filter(category__iexact=category)
+            if vdf_status is not None:
+                flag = vdf_status.lower() == "true"
+                com_qs = com_qs.filter(vdf_status=flag)
+            response["com_products"] = ComForecastSerializer(com_qs, many=True).data
+
+        if not product_type or product_type == "omni":
+            omni_qs = OmniForecast.objects.all()
+            if category:
+                omni_qs = omni_qs.filter(category__iexact=category)
+            if birthstone:
+                omni_qs = omni_qs.filter(birthstone__iexact=birthstone)
+            response["omni_products"] = OmniForecastSerializer(omni_qs, many=True).data
+
+        return Response(response)
+
+
+
 
 
 class StoreForecastViewSet(viewsets.ReadOnlyModelViewSet):
