@@ -171,20 +171,20 @@ class ForecastViewSet(ViewSet):
 
     @action(detail=False, methods=["get"])
     def filter_products(self, request):
-        category      = request.query_params.get("category")
-        birthstone    = request.query_params.get("birthstone")
-        red_box_item  = request.query_params.get("red_box_item")
-        vdf_status    = request.query_params.get("vdf_status")
-        product_type  = request.query_params.get("product_type")
+        categories     = request.query_params.getlist("category")      # multiple allowed
+        birthstones    = request.query_params.getlist("birthstone")    # multiple allowed
+        red_box_item   = request.query_params.get("red_box_item")
+        vdf_status     = request.query_params.get("vdf_status")
+        product_type   = request.query_params.get("product_type")
 
         response = {}
 
         if not product_type or product_type == "store":
             store_qs = StoreForecast.objects.all()
-            if category:
-                store_qs = store_qs.filter(category__iexact=category)
-            if birthstone:
-                store_qs = store_qs.filter(birthstone__iexact=birthstone)
+            if categories:
+                store_qs = store_qs.filter(category__in=categories)
+            if birthstones:
+                store_qs = store_qs.filter(birthstone__in=birthstones)
             if red_box_item is not None:
                 flag = red_box_item.lower() == "true"
                 store_qs = store_qs.filter(red_box_item=flag)
@@ -192,8 +192,8 @@ class ForecastViewSet(ViewSet):
 
         if not product_type or product_type == "com":
             com_qs = ComForecast.objects.all()
-            if category:
-                com_qs = com_qs.filter(category__iexact=category)
+            if categories:
+                com_qs = com_qs.filter(category__in=categories)
             if vdf_status is not None:
                 flag = vdf_status.lower() == "true"
                 com_qs = com_qs.filter(vdf_status=flag)
@@ -201,14 +201,13 @@ class ForecastViewSet(ViewSet):
 
         if not product_type or product_type == "omni":
             omni_qs = OmniForecast.objects.all()
-            if category:
-                omni_qs = omni_qs.filter(category__iexact=category)
-            if birthstone:
-                omni_qs = omni_qs.filter(birthstone__iexact=birthstone)
+            if categories:
+                omni_qs = omni_qs.filter(category__in=categories)
+            if birthstones:
+                omni_qs = omni_qs.filter(birthstone__in=birthstones)
             response["omni_products"] = OmniForecastSerializer(omni_qs, many=True).data
 
         return Response(response)
-
 
 
 
