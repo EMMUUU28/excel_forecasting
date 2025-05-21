@@ -265,120 +265,120 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
         for _, row in df_omni.iterrows()
     ]
 
-    # # For StoreForecast
-    # print("Starting StoreForecast data save/update...")
-    # for instance in store_instances:
-    #     StoreForecast.objects.update_or_create(
-    #         category=instance['category'],
-    #         pid=instance['pid'],
-    #         forecast_month=instance['forecast_month'],
-    #         defaults={
-    #             'lead_time': instance['lead_time'],
-    #             'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
-    #             'month_12_fc_index': instance['month_12_fc_index'],
-    #             'loss': instance['loss'],
-    #             'month_12_fc_index_loss': instance['month_12_fc_index_loss'],
-    #             'selected_months': instance['selected_months'],
-    #             'trend': instance['trend'],
-    #             'inventory_maintained': instance['inventory_maintained'],
-    #             'trend_index_difference': instance['trend_index_difference'],
-    #             'red_box_item': instance['red_box_item'],
-    #             'forecasting_method': instance['forecasting_method'],
-    #             'door_count': instance['door_count'],
-    #             'average_com_oh': instance['average_com_oh'],
-    #             'fldc': instance['fldc'],
-    #             'birthstone': instance['birthstone'],
-    #             'birthstone_month': instance['birthstone_month'],
-    #             'considered_birthstone_required_quantity': instance['considered_birthstone_required_quantity'],
-    #             'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
-    #             'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
-    #             'next_forecast_month': instance['next_forecast_month'],
-    #             'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
-    #             'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
-    #             'added_qty_macys_soq': instance['added_qty_macys_soq'],
-    #             'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
-    #             'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
-    #             'total_added_qty': instance['total_added_qty']
-    #         }
-    #     )
-    # print("StoreForecast data saved/updated successfully.")
+    # For StoreForecast
+    print("Starting StoreForecast data save/update...")
+    for instance in store_instances:
+        StoreForecast.objects.update_or_create(
+            category=instance['category'],
+            pid=instance['pid'],
+            forecast_month=instance['forecast_month'],
+            defaults={
+                'lead_time': instance['lead_time'],
+                'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
+                'month_12_fc_index': instance['month_12_fc_index'],
+                'loss': instance['loss'],
+                'month_12_fc_index_loss': instance['month_12_fc_index_loss'],
+                'selected_months': instance['selected_months'],
+                'trend': instance['trend'],
+                'inventory_maintained': instance['inventory_maintained'],
+                'trend_index_difference': instance['trend_index_difference'],
+                'red_box_item': instance['red_box_item'],
+                'forecasting_method': instance['forecasting_method'],
+                'door_count': instance['door_count'],
+                'average_com_oh': instance['average_com_oh'],
+                'fldc': instance['fldc'],
+                'birthstone': instance['birthstone'],
+                'birthstone_month': instance['birthstone_month'],
+                'considered_birthstone_required_quantity': instance['considered_birthstone_required_quantity'],
+                'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
+                'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
+                'next_forecast_month': instance['next_forecast_month'],
+                'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
+                'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
+                'added_qty_macys_soq': instance['added_qty_macys_soq'],
+                'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
+                'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
+                'total_added_qty': instance['total_added_qty']
+            }
+        )
+    print("StoreForecast data saved/updated successfully.")
 
-    # # For ComForecast
-    # print("Starting ComForecast data save/update...")
-    # for instance in com_instances:
-    #     ComForecast.objects.update_or_create(
-    #         category=instance['category'],
-    #         pid=instance['pid'],
-    #         forecast_month=instance['forecast_month'],
-    #         defaults={
-    #             'lead_time': instance['lead_time'],
-    #             'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
-    #             'selected_months': instance['selected_months'],
-    #             'com_month_12_fc_index': instance['com_month_12_fc_index'],
-    #             'com_trend': instance['com_trend'],
-    #             'trend': instance['trend'],
-    #             'inventory_maintained': instance['inventory_maintained'],
-    #             'trend_index_difference': instance['trend_index_difference'],
-    #             'red_box_item': instance['red_box_item'],
-    #             'forecasting_method': instance['forecasting_method'],
-    #             'minimum_required_oh_for_com': instance['minimum_required_oh_for_com'],
-    #             'fldc': instance['fldc'],
-    #             'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
-    #             'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
-    #             'next_forecast_month': instance['next_forecast_month'],
-    #             'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
-    #             'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
-    #             'added_qty_macys_soq': instance['added_qty_macys_soq'],
-    #             'vdf_status': instance['vdf_status'],
-    #             'vdf_added_qty': instance['vdf_added_qty'],
-    #             'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
-    #             'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
-    #             'total_added_qty': instance['total_added_qty']
-    #         }
-    #     )
-    # print("ComForecast data saved/updated successfully.")
+    # For ComForecast
+    print("Starting ComForecast data save/update...")
+    for instance in com_instances:
+        ComForecast.objects.update_or_create(
+            category=instance['category'],
+            pid=instance['pid'],
+            forecast_month=instance['forecast_month'],
+            defaults={
+                'lead_time': instance['lead_time'],
+                'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
+                'selected_months': instance['selected_months'],
+                'com_month_12_fc_index': instance['com_month_12_fc_index'],
+                'com_trend': instance['com_trend'],
+                'trend': instance['trend'],
+                'inventory_maintained': instance['inventory_maintained'],
+                'trend_index_difference': instance['trend_index_difference'],
+                'red_box_item': instance['red_box_item'],
+                'forecasting_method': instance['forecasting_method'],
+                'minimum_required_oh_for_com': instance['minimum_required_oh_for_com'],
+                'fldc': instance['fldc'],
+                'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
+                'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
+                'next_forecast_month': instance['next_forecast_month'],
+                'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
+                'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
+                'added_qty_macys_soq': instance['added_qty_macys_soq'],
+                'vdf_status': instance['vdf_status'],
+                'vdf_added_qty': instance['vdf_added_qty'],
+                'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
+                'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
+                'total_added_qty': instance['total_added_qty']
+            }
+        )
+    print("ComForecast data saved/updated successfully.")
 
-    # # For OmniForecast
-    # print("Starting OmniForecast data save/update...")
-    # for instance in omni_instances:
-    #     OmniForecast.objects.update_or_create(
-    #         category=instance['category'],
-    #         pid=instance['pid'],
-    #         forecast_month=instance['forecast_month'],
-    #         defaults={
-    #             'lead_time': instance['lead_time'],
-    #             'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
-    #             'selected_months': instance['selected_months'],
-    #             'com_month_12_fc_index': instance['com_month_12_fc_index'],
-    #             'com_trend': instance['com_trend'],
-    #             'com_inventory_maintained': instance['com_inventory_maintained'],
-    #             'trend_index_difference': instance['trend_index_difference'],
-    #             'red_box_item': instance['red_box_item'],
-    #             'forecasting_method': instance['forecasting_method'],
-    #             'minimum_required_oh_for_com': instance['minimum_required_oh_for_com'],
-    #             'com_fldc': instance['com_fldc'],
-    #             'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
-    #             'next_forecast_month': instance['next_forecast_month'],
-    #             'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
-    #             'store_month_12_fc_index': instance['store_month_12_fc_index'],
-    #             'loss': instance['loss'],
-    #             'store_month_12_fc_index_loss': instance['store_month_12_fc_index_loss'],
-    #             'trend': instance['trend'],
-    #             'store_inventory_maintained': instance['store_inventory_maintained'],
-    #             'door_count': instance['door_count'],
-    #             'store_fldc': instance['store_fldc'],
-    #             'birthstone': instance['birthstone'],
-    #             'birthstone_month': instance['birthstone_month'],
-    #             'considered_birthstone_required_quantity': instance['considered_birthstone_required_quantity'],
-    #             'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
-    #             'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
-    #             'added_qty_macys_soq': instance['added_qty_macys_soq'],
-    #             'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
-    #             'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
-    #             'total_added_qty': instance['total_added_qty']
-    #         }
-    #     )
-    # print("OmniForecast data saved/updated successfully.")
+    # For OmniForecast
+    print("Starting OmniForecast data save/update...")
+    for instance in omni_instances:
+        OmniForecast.objects.update_or_create(
+            category=instance['category'],
+            pid=instance['pid'],
+            forecast_month=instance['forecast_month'],
+            defaults={
+                'lead_time': instance['lead_time'],
+                'leadtime_holiday_adjustment': instance['leadtime_holiday_adjustment'],
+                'selected_months': instance['selected_months'],
+                'com_month_12_fc_index': instance['com_month_12_fc_index'],
+                'com_trend': instance['com_trend'],
+                'com_inventory_maintained': instance['com_inventory_maintained'],
+                'trend_index_difference': instance['trend_index_difference'],
+                'red_box_item': instance['red_box_item'],
+                'forecasting_method': instance['forecasting_method'],
+                'minimum_required_oh_for_com': instance['minimum_required_oh_for_com'],
+                'com_fldc': instance['com_fldc'],
+                'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
+                'next_forecast_month': instance['next_forecast_month'],
+                'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
+                'store_month_12_fc_index': instance['store_month_12_fc_index'],
+                'loss': instance['loss'],
+                'store_month_12_fc_index_loss': instance['store_month_12_fc_index_loss'],
+                'trend': instance['trend'],
+                'store_inventory_maintained': instance['store_inventory_maintained'],
+                'door_count': instance['door_count'],
+                'store_fldc': instance['store_fldc'],
+                'birthstone': instance['birthstone'],
+                'birthstone_month': instance['birthstone_month'],
+                'considered_birthstone_required_quantity': instance['considered_birthstone_required_quantity'],
+                'forecast_month_planned_oh': instance['forecast_month_planned_oh'],
+                'next_forecast_month_planned_oh': instance['next_forecast_month_planned_oh'],
+                'added_qty_macys_soq': instance['added_qty_macys_soq'],
+                'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
+                'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
+                'total_added_qty': instance['total_added_qty']
+            }
+        )
+    print("OmniForecast data saved/updated successfully.")
     # Write to different sheets in one Excel file
     with pd.ExcelWriter("forecast_summaryfor_april_4.xlsx", engine="openpyxl") as writer:
         df_store.to_excel(writer, sheet_name="store", index=False)

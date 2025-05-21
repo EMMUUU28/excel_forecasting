@@ -20,7 +20,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS').split(',')
+# CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS').split(',')
 
 # Application definition
 CORS_ALLOW_ALL_ORIGINS = True
