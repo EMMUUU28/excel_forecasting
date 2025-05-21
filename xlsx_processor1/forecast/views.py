@@ -173,8 +173,8 @@ class ForecastViewSet(ViewSet):
     def filter_products(self, request):
         categories     = request.query_params.getlist("category")      # multiple allowed
         birthstones    = request.query_params.getlist("birthstone")    # multiple allowed
-        red_box_item   = request.query_params.get("red_box_item")
-        vdf_status     = request.query_params.get("vdf_status")
+        red_box_items  = request.query_params.getlist("red_box_item")  # multiple allowed now
+        vdf_statuses   = request.query_params.getlist("vdf_status")    # multiple allowed now
         product_type   = request.query_params.get("product_type")
 
         response = {}
@@ -185,18 +185,24 @@ class ForecastViewSet(ViewSet):
                 store_qs = store_qs.filter(category__in=categories)
             if birthstones:
                 store_qs = store_qs.filter(birthstone__in=birthstones)
-            if red_box_item is not None:
-                flag = red_box_item.lower() == "true"
-                store_qs = store_qs.filter(red_box_item=flag)
+            if red_box_items:
+                # Convert string values to boolean and filter
+                red_box_flags = [item.lower() == "true" for item in red_box_items]
+                store_qs = store_qs.filter(red_box_item__in=red_box_flags)
             response["store_products"] = StoreForecastSerializer(store_qs, many=True).data
 
         if not product_type or product_type == "com":
             com_qs = ComForecast.objects.all()
             if categories:
                 com_qs = com_qs.filter(category__in=categories)
-            if vdf_status is not None:
-                flag = vdf_status.lower() == "true"
-                com_qs = com_qs.filter(vdf_status=flag)
+            if vdf_statuses:
+                # Convert string values to boolean and filter
+                vdf_flags = [status.lower() == "true" for status in vdf_statuses]
+                com_qs = com_qs.filter(vdf_status__in=vdf_flags)
+            if red_box_items:
+                # Add red_box_item filter for COM products if needed
+                red_box_flags = [item.lower() == "true" for item in red_box_items]
+                com_qs = com_qs.filter(red_box_item__in=red_box_flags)
             response["com_products"] = ComForecastSerializer(com_qs, many=True).data
 
         if not product_type or product_type == "omni":
@@ -205,6 +211,10 @@ class ForecastViewSet(ViewSet):
                 omni_qs = omni_qs.filter(category__in=categories)
             if birthstones:
                 omni_qs = omni_qs.filter(birthstone__in=birthstones)
+            if red_box_items:
+                # Add red_box_item filter for Omni products if needed
+                red_box_flags = [item.lower() == "true" for item in red_box_items]
+                omni_qs = omni_qs.filter(red_box_item__in=red_box_flags)
             response["omni_products"] = OmniForecastSerializer(omni_qs, many=True).data
 
         return Response(response)
