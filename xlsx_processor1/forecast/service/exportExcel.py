@@ -99,7 +99,6 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
         for category, code, num_products in dynamic_categories
     ]
 
-    final_data = {}
     store, coms, omni = [], [], []
 
     with Pool(processes=cpu_count()) as pool:
@@ -107,19 +106,10 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
 
     for result in results:
         if result:
-            json_result, s, c, o = result
-            final_data.update(json_result)
+            s, c, o = result
             store.extend(s)
             coms.extend(c)
             omni.extend(o)
-    
-     # Save JSON in media/output.json
-    json_output_path = os.path.join("media", "output.json")
-    with open(json_output_path, "w") as f:
-        json.dump(final_data, f, indent=2)
-
-    print(f"\nSuccessfully wrote data to {json_output_path}")
-    print("Data written to JSON file successfully.")
 
     df_store = pd.DataFrame(store)
     df_coms = pd.DataFrame(coms)
@@ -171,7 +161,7 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
             'fldc': row['FLDC'],
             'birthstone': row['birthstone'],
             'birthstone_month': row['birthstone_month'],
-            'considered_birthstone_required_quantity': row['considered birthstone for requried quantity'] == 'TRUE',
+            'considered_birthstone_required_quantity': row['considered birthstone'] == 'TRUE',
             'forecast_month_required_quantity': row['forecast_month_required_quantity'],
             'forecast_month_planned_oh': row['forecast_month_planned_oh_before_adding_qty'],
             'next_forecast_month': row['Next_forecast_month'],
@@ -180,12 +170,25 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
             'added_qty_macys_soq': row['Added qtys by Macys SOQ'],
             'forecast_month_planned_shipment': row['forecast_month_planned_shipment'],
             'next_forecast_month_planned_shipment': row['Next_forecast_month_planned_shipment'],
-            'total_added_qty': row['Total added qty']
+            'total_added_qty': row['Total added qty'],
+            'vendor': row.get('vendor', ''),  # New field
+            'Valentine_day': row.get('Valentine_day', 'FALSE') == 'TRUE',  # New field
+            'Mothers_day': row.get('Mothers_day', 'FALSE') == 'TRUE',  # New field
+            'Fathers_day': row.get('Fathers_day', 'FALSE') == 'TRUE',  # New field
+            'Mens_day': row.get('Mens_day', 'FALSE') == 'TRUE',  # New field
+            'Womens_day': row.get('Womens_day', 'FALSE') == 'TRUE',  # New field
+            'Min_order': float(row.get('Min_order', 0)),  # New field
+            'Macys_SOQ': float(row.get('Macys_SOQ', 0)),  # New field
+            'Qty_given_to_macys': float(row.get('Qty_given_to_macys', 0)),  # New field
+            'Added_qty_using_macys_SOQ': row.get('Added qty using macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Below_min_order': row.get('Below_min_order', 'FALSE') == 'TRUE',  # New field
+            'Over_macys_SOQ': row.get('Over_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Added_only_to_balance_macys_SOQ': row.get('Added_only_to_balance_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Need_to_review_first': row.get('Need_to_review_first', 'FALSE') == 'TRUE'  # New field
         }
         for _, row in df_store.iterrows()
     ]
 
-    
     # Similarly for ComForecast
     com_instances = [
         {
@@ -217,7 +220,21 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
             'vdf_added_qty': row['VDF_added_qty'],
             'forecast_month_planned_shipment': row['forecast_month_planned_shipment'],
             'next_forecast_month_planned_shipment': row['Next_forecast_month_planned_shipment'],
-            'total_added_qty': row['Total added qty']
+            'total_added_qty': row['Total added qty'],
+            'vendor': row.get('vendor', ''),  # New field
+            'Valentine_day': row.get('Valentine_day', 'FALSE') == 'TRUE',  # New field
+            'Mothers_day': row.get('Mothers_day', 'FALSE') == 'TRUE',  # New field
+            'Fathers_day': row.get('Fathers_day', 'FALSE') == 'TRUE',  # New field
+            'Mens_day': row.get('Mens_day', 'FALSE') == 'TRUE',  # New field
+            'Womens_day': row.get('Womens_day', 'FALSE') == 'TRUE',  # New field
+            'Min_order': float(row.get('Min_order', 0)),  # New field
+            'Macys_SOQ': float(row.get('Macys_SOQ', 0)),  # New field
+            'Qty_given_to_macys': float(row.get('Qty_given_to_macys', 0)),  # New field
+            'Added_qty_using_macys_SOQ': row.get('Added_qty_using_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Below_min_order': row.get('Below_min_order', 'FALSE') == 'TRUE',  # New field
+            'Over_macys_SOQ': row.get('Over_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Added_only_to_balance_macys_SOQ': row.get('Added_only_to_balance_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Need_to_review_first': row.get('Need_to_review_first', 'FALSE') == 'TRUE'  # New field
         }
         for _, row in df_coms.iterrows()
     ]
@@ -237,35 +254,63 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
             'com_month_12_fc_index': row['Com month_12_fc_index'],
             'com_trend': row['com trend'],
             'com_inventory_maintained': row['Com Inventory maintained'] == 'TRUE',
-            'trend_index_difference': row['trend index difference'],
+            'trend_index_difference_com': row['trend index difference(com)'],
             'red_box_item': row['red_box item'] == 'TRUE',
-            'forecasting_method': row['forecasting_method'],
+            'forecasting_method_com': row['forecasting_method(com)'],
             'minimum_required_oh_for_com': row['minimum required oh for com'],
             'com_fldc': row['Com FLDC'],
-            'forecast_month_required_quantity': row['forecast_month_required_quantity'],
+            'forecast_month_required_quantity_com': row['forecast_month_required_quantity_com'],
+
             'next_forecast_month': row['Next_forecast_month'],
-            'next_forecast_month_required_quantity': row['Next_forecast_month_required_quantity'],
+            'next_forecast_month_required_quantity_com': row['Next_forecast_month_required_quantity_com'],
             'store_month_12_fc_index': row['store_month_12_fc_index'],
             'loss': row['loss'],
             'store_month_12_fc_index_loss': row['store_month_12_fc_index_(loss)'],
-            'trend': row['trend'],
+            'store_trend': row['store_trend'],
+            'store_trend_index_difference': row['trend index difference(store)'],
             'store_inventory_maintained': row['store Inventory maintained'] == 'TRUE',
+            'forecasting_method_store': row['forecasting_method(store)'],
             'door_count': row['Door Count'],
             'store_fldc': row['store FLDC'],
             'birthstone': row['birthstone'],
             'birthstone_month': row['birthstone_month'],
+
             'considered_birthstone_required_quantity': row['considered birthstone for requried quantity'] == 'TRUE',
+            'forecast_month_required_quantity_store': row['forecast_month_required_quantity_store'],
+            'next_forecast_month_required_quantity_store': row['Next_forecast_month_required_quantity_store'],
+
+
+            'forecast_month_required_quantity_total': row['forecast_month_required_quantity_combined'],
             'forecast_month_planned_oh': row['forecast_month_planned_oh_before_adding_qty'],
+            'next_forecast_month_required_quantity_total': row['Next_forecast_month_required_quantity_combined'],
             'next_forecast_month_planned_oh': row['Next_forecast_month_planned_oh_before_adding_qty'],
+            
             'added_qty_macys_soq': row['Added qtys by Macys SOQ'],
             'forecast_month_planned_shipment': row['forecast_month_planned_shipment'],
             'next_forecast_month_planned_shipment': row['Next_forecast_month_planned_shipment'],
-            'total_added_qty': row['Total added qty']
+            'total_added_qty': row['Total added qty'],
+
+
+            'vendor': row.get('vendor', ''),  # New field
+            'Valentine_day': row.get('Valentine_day', 'FALSE') == 'TRUE',  # New field
+            'Mothers_day': row.get('Mothers_day', 'FALSE') == 'TRUE',  # New field
+            'Fathers_day': row.get('Fathers_day', 'FALSE') == 'TRUE',  # New field
+            'Mens_day': row.get('Mens_day', 'FALSE') == 'TRUE',  # New field
+            'Womens_day': row.get('Womens_day', 'FALSE') == 'TRUE',  # New field
+            'Min_order': float(row.get('Min_order', 0)),  # New field
+            'Macys_SOQ': float(row.get('Macys_SOQ', 0)),  # New field
+            'Qty_given_to_macys': float(row.get('Qty_given_to_macys', 0)),  # New field
+            'Added_qty_using_macys_SOQ': row.get('Added_qty_using_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Below_min_order': row.get('Below_min_order', 'FALSE') == 'TRUE',  # New field
+            'Over_macys_SOQ': row.get('Over_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Added_only_to_balance_macys_SOQ': row.get('Added_only_to_balance_macys_SOQ', 'FALSE') == 'TRUE',  # New field
+            'Need_to_review_first': row.get('Need_to_review_first', 'FALSE') == 'TRUE'  # New field
         }
         for _, row in df_omni.iterrows()
     ]
 
     # For StoreForecast
+
     print("Starting StoreForecast data save/update...")
     for instance in store_instances:
         StoreForecast.objects.update_or_create(
@@ -298,7 +343,21 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
                 'added_qty_macys_soq': instance['added_qty_macys_soq'],
                 'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
                 'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
-                'total_added_qty': instance['total_added_qty']
+                'total_added_qty': instance['total_added_qty'],
+                'vendor': instance['vendor'],
+                'Valentine_day': instance['Valentine_day'],
+                'Mothers_day': instance['Mothers_day'],
+                'Fathers_day': instance['Fathers_day'],
+                'Mens_day': instance['Mens_day'],
+                'Womens_day': instance['Womens_day'],
+                'Min_order': instance['Min_order'],
+                'Macys_SOQ': instance['Macys_SOQ'],
+                'Qty_given_to_macys': instance['Qty_given_to_macys'],
+                'Added_qty_using_macys_SOQ': instance['Added_qty_using_macys_SOQ'],
+                'Below_min_order': instance['Below_min_order'],
+                'Over_macys_SOQ': instance['Over_macys_SOQ'],
+                'Added_only_to_balance_macys_SOQ': instance['Added_only_to_balance_macys_SOQ'],
+                'Need_to_review_first': instance['Need_to_review_first']
             }
         )
     print("StoreForecast data saved/updated successfully.")
@@ -333,12 +392,26 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
                 'vdf_added_qty': instance['vdf_added_qty'],
                 'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
                 'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
-                'total_added_qty': instance['total_added_qty']
+                'total_added_qty': instance['total_added_qty'],
+                'vendor': instance['vendor'],
+                'Valentine_day': instance['Valentine_day'],
+                'Mothers_day': instance['Mothers_day'],
+                'Fathers_day': instance['Fathers_day'],
+                'Mens_day': instance['Mens_day'],
+                'Womens_day': instance['Womens_day'],
+                'Min_order': instance['Min_order'],
+                'Macys_SOQ': instance['Macys_SOQ'],
+                'Qty_given_to_macys': instance['Qty_given_to_macys'],
+                'Added_qty_using_macys_SOQ': instance['Added_qty_using_macys_SOQ'],
+                'Below_min_order': instance['Below_min_order'],
+                'Over_macys_SOQ': instance['Over_macys_SOQ'],
+                'Added_only_to_balance_macys_SOQ': instance['Added_only_to_balance_macys_SOQ'],
+                'Need_to_review_first': instance['Need_to_review_first']
             }
         )
     print("ComForecast data saved/updated successfully.")
 
-    # For OmniForecast
+   # For OmniForecast - Updated with all the fields matching the model definition
     print("Starting OmniForecast data save/update...")
     for instance in omni_instances:
         OmniForecast.objects.update_or_create(
@@ -352,18 +425,14 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
                 'com_month_12_fc_index': instance['com_month_12_fc_index'],
                 'com_trend': instance['com_trend'],
                 'com_inventory_maintained': instance['com_inventory_maintained'],
-                'trend_index_difference': instance['trend_index_difference'],
                 'red_box_item': instance['red_box_item'],
-                'forecasting_method': instance['forecasting_method'],
                 'minimum_required_oh_for_com': instance['minimum_required_oh_for_com'],
                 'com_fldc': instance['com_fldc'],
-                'forecast_month_required_quantity': instance['forecast_month_required_quantity'],
                 'next_forecast_month': instance['next_forecast_month'],
-                'next_forecast_month_required_quantity': instance['next_forecast_month_required_quantity'],
                 'store_month_12_fc_index': instance['store_month_12_fc_index'],
                 'loss': instance['loss'],
                 'store_month_12_fc_index_loss': instance['store_month_12_fc_index_loss'],
-                'trend': instance['trend'],
+                'store_trend': instance['store_trend'],
                 'store_inventory_maintained': instance['store_inventory_maintained'],
                 'door_count': instance['door_count'],
                 'store_fldc': instance['store_fldc'],
@@ -375,7 +444,33 @@ def process_data(input_path, file_path, month_from, month_to, percentage, input_
                 'added_qty_macys_soq': instance['added_qty_macys_soq'],
                 'forecast_month_planned_shipment': instance['forecast_month_planned_shipment'],
                 'next_forecast_month_planned_shipment': instance['next_forecast_month_planned_shipment'],
-                'total_added_qty': instance['total_added_qty']
+                'total_added_qty': instance['total_added_qty'],
+                'vendor': instance['vendor'],
+                'Valentine_day': instance['Valentine_day'],
+                'Mothers_day': instance['Mothers_day'],
+                'Fathers_day': instance['Fathers_day'],
+                'Mens_day': instance['Mens_day'],
+                'Womens_day': instance['Womens_day'],
+                'Min_order': instance['Min_order'],
+                'Macys_SOQ': instance['Macys_SOQ'],
+                'Qty_given_to_macys': instance['Qty_given_to_macys'],
+                'Added_qty_using_macys_SOQ': instance['Added_qty_using_macys_SOQ'],
+                'Below_min_order': instance['Below_min_order'],
+                'Over_macys_SOQ': instance['Over_macys_SOQ'],
+                'Added_only_to_balance_macys_SOQ': instance['Added_only_to_balance_macys_SOQ'],
+                'Need_to_review_first': instance['Need_to_review_first'],
+                # New fields from the model
+                'RLJ': instance.get('RLJ', None),  # Including the RLJ field, defaulting to None if not in instance
+                'trend_index_difference_com': instance['trend_index_difference_com'],
+                'trend_index_difference_store': instance['store_trend_index_difference'],
+                'forecasting_method_com': instance['forecasting_method_com'],
+                'forecasting_method_store': instance['forecasting_method_store'],
+                'forecast_month_required_quantity_com': instance['forecast_month_required_quantity_com'],
+                'next_forecast_month_required_quantity_com': instance['next_forecast_month_required_quantity_com'],
+                'forecast_month_required_quantity_store': instance['forecast_month_required_quantity_store'],
+                'next_forecast_month_required_quantity_store': instance['next_forecast_month_required_quantity_store'],
+                'forecast_month_required_quantity_total': instance['forecast_month_required_quantity_total'],
+                'next_forecast_month_required_quantity_total': instance['next_forecast_month_required_quantity_total']
             }
         )
     print("OmniForecast data saved/updated successfully.")
@@ -660,13 +755,8 @@ def process_category(args):
     ws.column_dimensions['c'].width = 20
     ws.column_dimensions['B'].width = 45
     ws.column_dimensions['H'].width = 25
-    all_birthstone_products=[]
-    upcoming_birthstone_products=[]
-    pids_below_door_count_alert=[]
-    less_than_macys_SOQ_alert=[]
-    added_macys_proj_receipts_alert=[]
-    min_order_alert=[]
-    notify_macys_alert=[]
+   
+   
     for loop in range(num_products):
         start_row = 5 + (51 * loop)
         g_value = loop + 1
@@ -674,7 +764,7 @@ def process_category(args):
 
         # Find the matching rows
         loader = VariableLoader(cross_ref)
-        current_month_upper,pid_type,std_trend,STD_index_value ,month_12_fc_index,forecasting_method,planned_shp,planned_fc,store,coms,omni= algorithm(loader,category,all_birthstone_products,upcoming_birthstone_products,pids_below_door_count_alert,less_than_macys_SOQ_alert,added_macys_proj_receipts_alert,notify_macys_alert,min_order_alert,store,coms,omni)
+        current_month_upper,pid_type,std_trend,STD_index_value ,month_12_fc_index,forecasting_method,planned_shp,planned_fc,pid_omni_status,store,coms,omni= algorithm(loader,category,store,coms,omni)
         print("################################################################3")
 
 
@@ -2385,12 +2475,6 @@ def process_category(args):
     wb.save(output_file)  # Save the workbook as an .xlsx file
     print(f"Workbook '{output_file}' saved successfully.")
 
-    
-
-
-    json_result = {}
-    json_result[output_file_name] = {"Pid_to_review": pids_below_door_count_alert, "Birthstone products": all_birthstone_products,  "Pid_to_notify_to_macys": notify_macys_alert,"Upcoming birthstone products": upcoming_birthstone_products,"Added quatity using macys proj receipts":added_macys_proj_receipts_alert,"Quantity below min order":min_order_alert}
-
     # At the end of this function, return a tuple of (output_file, final_data, store, coms, omni)
-    return json_result, store, coms, omni
+    return  store, coms, omni
     

@@ -4,22 +4,22 @@ import math
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-
 from forecast.service.staticVariable import *
 
 
-def count_ttl_com_sale(LY_Unit_Sales,LY_MCOM_Unit_Sales):
-    All_LY_Unit_Sales_list=[LY_Unit_Sales[month] for month in MONTHS]
-    ALL_LY_MCOM_Unit_Sales=[LY_MCOM_Unit_Sales[month] for month in MONTHS]
-    result_list = [
-        (ly_mcom / ty_unit if ty_unit != 0 else 0)
-        for ly_mcom, ty_unit in zip(ALL_LY_MCOM_Unit_Sales, All_LY_Unit_Sales_list)
-    ]
+def count_ttl_com_sale(LY_Unit_Sales, LY_MCOM_Unit_Sales):
+    All_LY_Unit_Sales_list = [LY_Unit_Sales[month] for month in MONTHS]
+    ALL_LY_MCOM_Unit_Sales = [LY_MCOM_Unit_Sales[month] for month in MONTHS]
+    
+    result_list = []
+    for ly_mcom, ty_unit in zip(ALL_LY_MCOM_Unit_Sales, All_LY_Unit_Sales_list):
+        if ly_mcom > 0 and ty_unit > 0:
+            result_list.append(ly_mcom / ty_unit)
 
-    # Calculate the average COM to TTL % Sales for this year
-    average = sum(result_list) / len(result_list) if result_list else 0 
-    average_com_to_ttl_sales=average*100
+    average = sum(result_list) / len(result_list) if result_list else 0
+    average_com_to_ttl_sales = average * 100
     return average_com_to_ttl_sales
+
 
 def find_pid_type(Safe_Non_Safe,pid_value,LY_Unit_Sales,LY_MCOM_Unit_Sales,Door_count):
     pid_type=None
@@ -59,15 +59,32 @@ def get_vendor_details(vendor, vendor_sheet):
    
     return country, lead_time
  
-def calculate_forecast_date(current_date, lead_time):
-    """Calculate forecast date based on lead time."""
-    return current_date + timedelta(weeks=lead_time)
- 
+
+
+def calculate_forecast_date(current_date: datetime, lead_time: int, country) -> datetime:
+    """
+    Calculate forecast date based on lead time (in weeks).
+    If country is Italy and August is between current_date and forecast_date, skip August.
+    """
+    raw_forecast_date = current_date + timedelta(weeks=lead_time)
+
+    # Only apply special case if country is a string and Italy
+    if isinstance(country, str) and country.lower() == "italy":
+        # Check if August is in the range
+        dt = current_date
+        while dt <= raw_forecast_date:
+            if dt.month == 8:  # August
+                raw_forecast_date += timedelta(days=31)
+                break
+            dt += timedelta(days=1)
+
+    return raw_forecast_date
+
 def adjust_lead_time(country, current_date, forecast_date, lead_time):
     """Adjust lead time based on holiday periods."""
     holiday_periods = {
         "China": ("2025-01-22", "2025-02-05", 11),
-        "Italy": ("2025-08-01", "2025-08-31", 14)
+        "Italy": ("2025-08-1", "2025-08-31", 14)
     }
    
     currentdate = current_date.strftime("%Y-%m-%d")
@@ -80,7 +97,17 @@ def adjust_lead_time(country, current_date, forecast_date, lead_time):
             return adjusted_lead_time,leadtime_holiday
    
     return lead_time,leadtime_holiday
- 
+from datetime import datetime
+
+def extend_forecast_if_italy(forecast_date: datetime, country: str) -> datetime:
+    """
+    If forecast_date is in August and country is Italy, set to 15 September of that year.
+    Otherwise, return original forecast_date.
+    """
+    if forecast_date.month == 8 and country.lower() == "italy":
+        return datetime(forecast_date.year, 9, 15)
+    return forecast_date
+
 def convert_month_to_abbr(month_name):
     """Convert full month name to 3-letter abbreviation."""
     return month_name[:3].upper()
@@ -93,7 +120,7 @@ def get_week_of_month(date):
  
 def is_late_forecast_week(forecast_date):
     """Return True if the forecast week is greater than week 2."""
-    return get_week_of_month(forecast_date) > 2
+    return get_week_of_month(forecast_date) >= 2
  
 def get_forecast_info(forecast_date):
     """Return forecast date, forecast month (full and abbreviated), and year."""
@@ -203,7 +230,6 @@ def find_season_list(season):
     return season_month
 
 def last_year_eom_oh_season(LY_OH_Units,LY_MCOM_OH_Units,season_month):
-    
         LY_OH_Units_list_for_inventory_check = [LY_OH_Units[month] for month in season_month]
         LY_OH_MCOM_Units_list_for_inventory_check=[LY_MCOM_OH_Units[month] for month in season_month]
         
@@ -581,7 +607,7 @@ def get_required_quantity_for_nonbsp(forecast_month, previous_month, KPI_Door_co
         logging.info(f'Non-BSP: Forecast month is different, required_quantity: {KPI_Door_count}')
         return KPI_Door_count
 
-def process_bsp_or_nonbsp_product(bsp_row, birthstone_sheet, forecast_month, KPI_Door_count, pid_value, all_birthstone_products, upcoming_birthstone_products):
+def process_bsp_or_nonbsp_product(bsp_row, birthstone_sheet, forecast_month, KPI_Door_count, pid_value):
     bsp_or_not = bsp_row['BSP_or_not'].iloc[0]
     bsp_or_not = str(bsp_or_not).strip().upper() if bsp_or_not else None
     logging.info(f'Processing PID: {pid_value}, BSP_or_not: {bsp_or_not}')
@@ -589,7 +615,6 @@ def process_bsp_or_nonbsp_product(bsp_row, birthstone_sheet, forecast_month, KPI
     required_quantity = None
 
     if bsp_or_not == 'BSP':
-        all_birthstone_products.append(pid_value)
         logging.info(f'Added {pid_value} to all_birthstone_products [BSP]')
         
         category_bsp = bsp_row['category'].iloc[0]
@@ -610,11 +635,9 @@ def process_bsp_or_nonbsp_product(bsp_row, birthstone_sheet, forecast_month, KPI
             logging.info(f'Calculated BSP required_quantity: {required_quantity}')
             
             if forecast_month == previous_month or forecast_month == 'Nov':
-                upcoming_birthstone_products.append(pid_value)
                 birthstone_status=True
                 logging.info(f'Added {pid_value} to upcoming_birthstone_products [BSP]')
     else:
-        all_birthstone_products.append(pid_value)
         logging.info(f'Added {pid_value} to all_birthstone_products [NON BSP]')
 
         category_bsp = bsp_row['category'].iloc[0]
@@ -635,13 +658,12 @@ def process_bsp_or_nonbsp_product(bsp_row, birthstone_sheet, forecast_month, KPI
             logging.info(f'Calculated NON-BSP required_quantity: {required_quantity}')
             
             if forecast_month == previous_month or forecast_month == 'Nov':
-                upcoming_birthstone_products.append(pid_value)
                 birthstone_status=True
                 logging.info(f'Added {pid_value} to upcoming_birthstone_products [NON BSP]')
 
     return required_quantity,birthstone_status,birthstone,birthstone_month
 
-def calculate_required_quantity(master_sheet, pid_value, birthstone_sheet, forecast_month, KPI_Door_count, all_birthstone_products, upcoming_birthstone_products):
+def calculate_required_quantity(master_sheet, pid_value, birthstone_sheet, forecast_month, KPI_Door_count):
     required_quantity_month_dict = {}
 
     logging.info(f'Calculating required_quantity for PID: {pid_value}, Forecast Month: {forecast_month}')
@@ -649,8 +671,7 @@ def calculate_required_quantity(master_sheet, pid_value, birthstone_sheet, forec
 
     if not bsp_row.empty:
         required_quantity,birthstone_status,birthstone,birthstone_month = process_bsp_or_nonbsp_product(
-            bsp_row, birthstone_sheet, forecast_month, KPI_Door_count, pid_value, all_birthstone_products, upcoming_birthstone_products
-        )
+            bsp_row, birthstone_sheet, forecast_month, KPI_Door_count, pid_value)
         if required_quantity is not None:
             required_quantity_month_dict[forecast_month] = required_quantity
             logging.info(f'Final required_quantity for {forecast_month}: {required_quantity}')
@@ -683,7 +704,7 @@ def find_next_month_after_forecast_month(forecast_month):
     else:
         return MONTHS[(forecast_month_index + 1) % len(MONTHS)]
  
-def update_required_quantity_for_forecast_month(forecast_month, planned_fc, required_quantity_month_dict, average_com_eom_oh,KPI_Door_count):
+def update_required_quantity_for_forecast_month(forecast_month, planned_fc, required_quantity_month_dict, average_com_eom_oh,KPI_Door_count,country,week_of_forecast_month):
     next_month_after_forecast_month = find_next_month_after_forecast_month(forecast_month)
     # Calculate FLDC for the next month
     Calculate_FLDC = round((planned_fc[next_month_after_forecast_month]) / 2)
@@ -693,10 +714,16 @@ def update_required_quantity_for_forecast_month(forecast_month, planned_fc, requ
         required_quantity_month_dict.get(forecast_month, 0) + Calculate_FLDC + average_com_eom_oh
     )
     required_quantity_month_dict[next_month_after_forecast_month] = KPI_Door_count + average_com_eom_oh
-    return required_quantity_month_dict,Calculate_FLDC
+    if country=='Italy' and forecast_month=='JUL' and week_of_forecast_month > 2 :
+        forecast_month_next_next_month=find_next_month_after_forecast_month(next_month_after_forecast_month)
+        FLDC_next_month = round((planned_fc[forecast_month_next_next_month]) / 2)
+        required_quantity_month_dict[next_month_after_forecast_month]+=FLDC_next_month
+
+        required_quantity_month_dict[forecast_month_next_next_month] = KPI_Door_count + average_com_eom_oh
+    return required_quantity_month_dict , Calculate_FLDC
  
  
-def update_projection_for_month(month,required_quantity_month_dict,planned_oh,planned_shp,pid_value,pids_below_door_count_alert):
+def update_projection_for_month(month,required_quantity_month_dict,planned_oh,planned_shp,pid_value):
  
     required_quantity = required_quantity_month_dict.get(month, 0)
  
@@ -708,9 +735,8 @@ def update_projection_for_month(month,required_quantity_month_dict,planned_oh,pl
         planned_shp[month] += difference
  
         # Add PID to alert list
-        pids_below_door_count_alert.append(pid_value)
  
-    return planned_shp, pids_below_door_count_alert
+    return planned_shp
  
  
  
@@ -803,9 +829,10 @@ def safe_float(value):
 
 def sum_planned_shipments(season_months, forecast_month, planned_shipments, macys_proj_receipt, omni_receipts):
     start_index = 0
+    season_months=MONTHS
     end_index = season_months.index(forecast_month) + 2  # Include forecast month
     selected_months = season_months[start_index:end_index]
-
+    logging.info(f'selected_months',selected_months)
     omni_receipts_sum = sum(safe_float(omni_receipts.get(month, 0)) for month in selected_months)
     planned_shipment_sum = sum(safe_float(planned_shipments.get(month, 0)) for month in selected_months)
     macys_proj_receipt_sum = sum(safe_float(macys_proj_receipt.get(month, 0)) for month in selected_months)
@@ -861,15 +888,12 @@ def adjust_planned_shipments_based_on_macys(
     KPI_Door_count,
     category,
     return_quantity_dict,
-    pid_value,
-    less_than_macys_SOQ_alert,
-    added_macys_proj_receipts_alert
+    pid_value
 ):
     # Calculate remaining units
     remaining_units = macys_proj_receipt_upto_next_month_after_forecast_month - sum_of_omni_receipt_and_planned_shipment_upto_next_month_after_forecast_month
     additional_units=0
     if remaining_units > 0:
-        less_than_macys_SOQ_alert.append(pid_value)
         if planned_oh[forecast_month] < 3 * KPI_Door_count:
             if category != "Men's":
                 additional_units = round((remaining_units * percentage), 0)
@@ -877,7 +901,6 @@ def adjust_planned_shipments_based_on_macys(
                 logging.info(f'Macy additional_units: {additional_units}')
 
 
-                added_macys_proj_receipts_alert.append(pid_value)
     logging.info(f'return_quantity_dict: {return_quantity_dict}')
 
     # Subtract return quantities from planned shipments
@@ -887,7 +910,7 @@ def adjust_planned_shipments_based_on_macys(
 
     }
 
-    return planned_shipments, less_than_macys_SOQ_alert, added_macys_proj_receipts_alert,additional_units
+    return planned_shipments,additional_units
  
 def round_to_nearest_five(value):
     return math.ceil(value / 5) * 5
@@ -899,13 +922,7 @@ def check_macys_min_order(
     total_gross_projection,
     in_transit,
     planned_shp,
-    Min_order,
-    notify_macys_alert,
-    min_order_alert
 ):
-    # Check if notify_macys_alert needs to be updated
-    if macys_season_sum < planned_season_sum :
-        notify_macys_alert.append(pid_value)
  
     # Calculate total planned shipments
     total_planned_shipments = sum(planned_shp.get(month, 0) for month in MONTHS)
@@ -913,11 +930,7 @@ def check_macys_min_order(
     # Calculate total added quantity
     total_added_quantity = total_planned_shipments - total_gross_projection - in_transit
  
-    # Check against minimum order
-    if total_added_quantity < Min_order:
-        min_order_alert.append(pid_value)
- 
-    return notify_macys_alert, min_order_alert, total_added_quantity
+    return total_added_quantity
 
 
 #com
@@ -1009,3 +1022,11 @@ def required_quantity_for_com(forecast_month, planned_fc, average_com_oh):
     required_quantity_month_dict[forecast_month] =  Calculate_FLDC + average_com_oh
     required_quantity_month_dict[next_month_after_forecast_month] = average_com_oh
     return required_quantity_month_dict,Calculate_FLDC
+
+    from datetime import datetime, timedelta
+
+def is_day_after_23(dt: datetime) -> bool:
+    """
+    Returns True if the datetime object's day is 24 or more.
+    """
+    return dt.day >= 24
